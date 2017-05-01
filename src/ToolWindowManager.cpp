@@ -871,7 +871,7 @@ void ToolWindowManager::tabCloseRequested(int index) {
     removeToolWindow(toolWindow);
 }
 
-void ToolWindowManager::windowTitleChanged(const QString &title) {
+void ToolWindowManager::windowTitleChanged(const QString &) {
   QWidget* toolWindow = qobject_cast<QWidget*>(sender());
   if(!toolWindow) {
     return;
