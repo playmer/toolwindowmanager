@@ -95,7 +95,7 @@ void MainWindow::on_actionSaveState_triggered() {
 void MainWindow::on_actionRestoreState_triggered() {
   QSettings settings;
   restoreGeometry(settings.value("geometry").toByteArray());
-  ui->toolWindowManager->restoreState(settings.value("toolWindowManagerState"));
+  ui->toolWindowManager->restoreState(settings.value("toolWindowManagerState").toMap());
 }
 
 void MainWindow::on_actionClearState_triggered() {
