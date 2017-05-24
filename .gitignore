@@ -1,4 +1,10 @@
 *.user
 build*/
+example/debug/
+example/release/
+example/.vs/
+example/*.sln
+example/*.vcxproj*
+example/ui_*.h
 *~
 
