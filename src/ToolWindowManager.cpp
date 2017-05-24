@@ -55,8 +55,6 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   QSplitter* testSplitter = new QSplitter();
   m_rubberBandLineWidth = testSplitter->handleWidth();
   delete testSplitter;
-  m_dragIndicator = new QLabel(0, Qt::ToolTip );
-  m_dragIndicator->setAttribute(Qt::WA_ShowWithoutActivating);
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
   ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this, false);
@@ -70,11 +68,14 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   m_createCallback = NULL;
   m_lastUsedArea = NULL;
 
+  m_overlay = createDragOverlayWidget();
+
   m_rectRubberBand = new QRubberBand(QRubberBand::Rectangle, this);
   m_lineRubberBand = new QRubberBand(QRubberBand::Line, this);
 }
 
 ToolWindowManager::~ToolWindowManager() {
+  delete m_overlay;
   while(!m_areas.isEmpty()) {
     delete m_areas.first();
   }
@@ -509,9 +510,7 @@ void ToolWindowManager::startDrag(const QList<QWidget *> &toolWindows,
 
   m_draggedWrapper = wrapper;
   m_draggedToolWindows = toolWindows;
-  m_dragIndicator->setPixmap(generateDragPixmap(toolWindows));
   updateDragPosition();
-  m_dragIndicator->show();
 }
 
 QVariantMap ToolWindowManager::saveSplitterState(QSplitter *splitter) {
@@ -561,19 +560,6 @@ QSplitter *ToolWindowManager::restoreSplitterState(const QVariantMap &savedData)
   }
   splitter->restoreState(QByteArray::fromBase64(savedData[QStringLiteral("state")].toByteArray()));
   return splitter;
-}
-
-QPixmap ToolWindowManager::generateDragPixmap(const QList<QWidget *> &toolWindows) {
-  QTabBar widget;
-  widget.setDocumentMode(true);
-  foreach(QWidget* toolWindow, toolWindows) {
-    widget.addTab(toolWindow->windowIcon(), toolWindow->windowTitle());
-  }
-#if QT_VERSION >= 0x050000 // Qt5
-  return widget.grab();
-#else //Qt4
-  return QPixmap::grabWidget(&widget);
-#endif
 }
 
 void ToolWindowManager::showNextDropSuggestion() {
@@ -785,10 +771,32 @@ void ToolWindowManager::updateDragPosition() {
   }
 
   QPoint pos = QCursor::pos();
-  m_dragIndicator->move(pos + QPoint(1, 1));
-  bool foundWrapper = false;
+  ToolWindowManagerWrapper* foundWrapper = NULL;
 
-  QWidget* window = qApp->topLevelAt(pos);
+  m_suggestions.clear();
+
+  // find the first toplevel widget that isn't an overlay widget
+  QWidget* window = NULL;
+  foreach(QWidget *tl, qApp->topLevelWidgets()) {
+    bool isOverlay = tl == m_overlay;
+
+    foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
+      qInfo() << wrapper->overlay();
+      if (wrapper->overlay() == tl) {
+        isOverlay = true;
+        break;
+      }
+    }
+
+    if (isOverlay)
+      continue;
+
+    if (tl->rect().contains(tl->mapFromGlobal(pos))) {
+      window = tl;
+      break;
+    }
+  }
+
   foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
     // don't allow dragging a whole wrapper into a subset of itself
     if (wrapper == m_draggedWrapper) {
@@ -796,21 +804,40 @@ void ToolWindowManager::updateDragPosition() {
     }
     if (wrapper->window() == window) {
       if (wrapper->rect().contains(wrapper->mapFromGlobal(pos))) {
+        wrapper->showOverlay();
         findSuggestions(wrapper);
+        foundWrapper = wrapper;
         if (!m_suggestions.isEmpty()) {
           //starting or restarting timer
           if (m_dropSuggestionSwitchTimer.isActive()) {
             m_dropSuggestionSwitchTimer.stop();
           }
           m_dropSuggestionSwitchTimer.start();
-          foundWrapper = true;
         }
       }
       break;
     }
   }
-  if (!foundWrapper) {
+  foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
+    if(wrapper != foundWrapper)
+      wrapper->hideOverlay();
+  }
+  if (m_suggestions.isEmpty()) {
+    m_overlay->show();
+
+    if (m_draggedWrapper) {
+      m_overlay->setGeometry(m_draggedWrapper->dragGeometry());
+    } else {
+      QRect r;
+      for (QWidget *w : m_draggedToolWindows)
+        r = r.united(w->rect());
+      m_overlay->setGeometry(pos.x(), pos.y(), r.width(), r.height());
+    }
+
     handleNoSuggestions();
+  } else {
+    if (m_overlay->isVisible())
+      m_overlay->hide();
   }
 }
 
@@ -819,6 +846,10 @@ void ToolWindowManager::finishDrag() {
     qWarning("unexpected finishDrag");
     return;
   }
+  foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
+    wrapper->hideOverlay();
+  }
+  m_overlay->hide();
   if (m_suggestions.isEmpty()) {
 
     // check if we're dragging a whole float window, if so we don't do anything except move it.
@@ -853,8 +884,6 @@ void ToolWindowManager::finishDrag() {
     moveToolWindows(m_draggedToolWindows, suggestion);
   }
 
-
-  m_dragIndicator->hide();
   m_draggedToolWindows.clear();
 }
 
@@ -895,6 +924,16 @@ void ToolWindowManager::windowTitleChanged(const QString &) {
   if(area) {
     area->updateToolWindow(toolWindow);
   }
+}
+
+QWidget* ToolWindowManager::createDragOverlayWidget() {
+  QWidget *ret = new QWidget(NULL);
+  ret->setStyleSheet(QStringLiteral("background-color: #0C266C;"));
+	ret->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+	ret->setWindowOpacity(0.3);
+  ret->setAttribute(Qt::WA_ShowWithoutActivating);
+  ret->hide();
+  return ret;
 }
 
 QSplitter *ToolWindowManager::createSplitter() {

@@ -38,12 +38,16 @@ ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, b
   setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint);
   setWindowTitle(QStringLiteral(" "));
 
+  m_overlay = manager->createDragOverlayWidget();
+
   m_dragReady = false;
   m_dragActive = false;
 
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
   m_manager->m_wrappers << this;
+
+  m_titlebar = NULL;
 
   if (floating) {
     setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
@@ -61,6 +65,7 @@ ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, b
 }
 
 ToolWindowManagerWrapper::~ToolWindowManagerWrapper() {
+  delete m_overlay;
   m_manager->m_wrappers.removeOne(this);
 }
 
@@ -72,8 +77,24 @@ void ToolWindowManagerWrapper::closeEvent(QCloseEvent *) {
   m_manager->moveToolWindows(toolWindows, ToolWindowManager::NoArea);
 }
 
+void ToolWindowManagerWrapper::showOverlay() {
+  m_overlay->show();
+  QRect g = geometry();
+  if (!m_titlebar)
+    g.moveTopLeft(mapToGlobal(g.topLeft()));
+  m_overlay->setGeometry(g);
+}
+
+void ToolWindowManagerWrapper::hideOverlay() {
+  m_overlay->hide();
+}
+
 void ToolWindowManagerWrapper::finishDragMove() {
   move(m_dragStartPos - m_dragStartCursor + QCursor::pos());
+}
+
+QRect ToolWindowManagerWrapper::dragGeometry() {
+  return QRect(m_dragStartPos - m_dragStartCursor + QCursor::pos(), size());
 }
 
 bool ToolWindowManagerWrapper::eventFilter(QObject *object, QEvent *event) {

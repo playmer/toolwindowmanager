@@ -296,7 +296,7 @@ private:
   // list of tool windows that are currently dragged, or empty list if there is no current drag
   QList<QWidget*> m_draggedToolWindows;
   ToolWindowManagerWrapper* m_draggedWrapper;
-  QLabel* m_dragIndicator; // label used to display dragged content
+  QWidget* m_overlay;
 
   QRubberBand* m_rectRubberBand; // placeholder objects used for displaying drop suggestions
   QRubberBand* m_lineRubberBand;
@@ -327,6 +327,8 @@ private:
   void finishDrag();
   bool dragInProgress() { return !m_draggedToolWindows.isEmpty(); }
 
+  QWidget* createDragOverlayWidget();
+
   friend class ToolWindowManagerArea;
   friend class ToolWindowManagerWrapper;
 
@@ -341,12 +343,6 @@ protected:
    * this function to change properties of all tab widgets used by this class.
    */
   virtual ToolWindowManagerArea *createArea();
-  /*!
-   * \brief Generates a pixmap that is used to represent the data in a drag and drop operation
-   * near the mouse cursor.
-   * You may reimplement this function to use different pixmaps.
-   */
-  virtual QPixmap generateDragPixmap(const QList<QWidget *> &toolWindows);
 
 private slots:
   void showNextDropSuggestion();
