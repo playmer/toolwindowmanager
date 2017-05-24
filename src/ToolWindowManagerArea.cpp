@@ -23,6 +23,7 @@
  *
  */
 #include "ToolWindowManagerArea.h"
+#include "ToolWindowManagerTabBar.h"
 #include "ToolWindowManager.h"
 #include <QApplication>
 #include <QMouseEvent>
@@ -42,19 +43,23 @@ ToolWindowManagerArea::ToolWindowManagerArea(ToolWindowManager *manager, QWidget
   QTabWidget(parent)
 , m_manager(manager)
 {
+  m_tabBar = new ToolWindowManagerTabBar(this);
+  setTabBar(m_tabBar);
+
+  m_tabBar->setTabsClosable(true);
+
   m_dragCanStart = false;
   m_tabDragCanStart = false;
   m_inTabMoved = false;
   m_userCanDrop = true;
   setMovable(true);
-  setTabsClosable(true);
   setDocumentMode(true);
   tabBar()->installEventFilter(this);
   m_manager->m_areas << this;
 
   QObject::connect(tabBar(), &QTabBar::tabMoved, this, &ToolWindowManagerArea::tabMoved);
+  QObject::connect(tabBar(), &QTabBar::tabCloseRequested, this, &ToolWindowManagerArea::tabClosing);
   QObject::connect(this, &QTabWidget::currentChanged, this, &ToolWindowManagerArea::tabSelected);
-  QObject::connect(this, &QTabWidget::tabCloseRequested, this, &ToolWindowManagerArea::tabClosing);
 }
 
 ToolWindowManagerArea::~ToolWindowManagerArea() {
@@ -117,7 +122,9 @@ bool ToolWindowManagerArea::eventFilter(QObject *object, QEvent *event) {
     if (event->type() == QEvent::MouseButtonPress &&
         qApp->mouseButtons() == Qt::LeftButton) {
 
-      int tabIndex = tabBar()->tabAt(static_cast<QMouseEvent*>(event)->pos());
+      QPoint pos = static_cast<QMouseEvent*>(event)->pos();
+
+      int tabIndex = tabBar()->tabAt(pos);
 
       // can start tab drag only if mouse is at some tab, not at empty tabbar space
       if (tabIndex >= 0) {
@@ -128,7 +135,7 @@ bool ToolWindowManagerArea::eventFilter(QObject *object, QEvent *event) {
         } else {
           setMovable(true);
         }
-      } else {
+      } else if (m_tabBar == NULL || !m_tabBar->inButton(pos)) {
         m_dragCanStart = true;
       }
     } else if (event->type() == QEvent::MouseButtonPress &&

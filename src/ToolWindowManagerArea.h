@@ -29,6 +29,7 @@
 #include <QVariantMap>
 
 class ToolWindowManager;
+class ToolWindowManagerTabBar;
 
 /*!
  * \brief The ToolWindowManagerArea class is a tab widget used to store tool windows.
@@ -86,6 +87,7 @@ protected:
 
 private:
   ToolWindowManager* m_manager;
+  ToolWindowManagerTabBar* m_tabBar;
   bool m_dragCanStart; // indicates that user has started mouse movement on QTabWidget
                        // that can be considered as dragging it if the cursor will leave
                        // its area

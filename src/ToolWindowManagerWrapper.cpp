@@ -51,6 +51,9 @@ ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, b
     m_titlebar->setStyleSheet(QStringLiteral("background-color: #0C266C; color: #ffffff; padding: 2px;"));
     m_titlebar->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
     mainLayout->addWidget(m_titlebar);
+    mainLayout->setMargin(0);
+    mainLayout->setSpacing(0);
+    mainLayout->setContentsMargins(QMargins(0, 0, 0, 0));
 
     installEventFilter(this);
     m_titlebar->installEventFilter(this);
