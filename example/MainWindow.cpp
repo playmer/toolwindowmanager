@@ -39,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
   QList<QPushButton*> toolWindows;
   for(int i = 0; i < 6; i++) {
-    QPushButton* b1 = new QPushButton(QString("tool%1").arg(i + 1));
+    QPushButton* b1 = new QPushButton(QStringLiteral("tool%1").arg(i + 1));
     b1->setWindowTitle(b1->text());
     b1->setObjectName(b1->text());
     QAction* action = ui->menuToolWindows->addAction(b1->text());
@@ -88,19 +88,19 @@ void MainWindow::toolWindowVisibilityChanged(QWidget *toolWindow, bool visible) 
 
 void MainWindow::on_actionSaveState_triggered() {
   QSettings settings;
-  settings.setValue("toolWindowManagerState", ui->toolWindowManager->saveState());
-  settings.setValue("geometry", saveGeometry());
+  settings.setValue(QStringLiteral("toolWindowManagerState"), ui->toolWindowManager->saveState());
+  settings.setValue(QStringLiteral("geometry"), saveGeometry());
 }
 
 void MainWindow::on_actionRestoreState_triggered() {
   QSettings settings;
-  restoreGeometry(settings.value("geometry").toByteArray());
-  ui->toolWindowManager->restoreState(settings.value("toolWindowManagerState").toMap());
+  restoreGeometry(settings.value(QStringLiteral("geometry")).toByteArray());
+  ui->toolWindowManager->restoreState(settings.value(QStringLiteral("toolWindowManagerState")).toMap());
 }
 
 void MainWindow::on_actionClearState_triggered() {
   QSettings settings;
-  settings.remove("geometry");
-  settings.remove("toolWindowManagerState");
+  settings.remove(QStringLiteral("geometry"));
+  settings.remove(QStringLiteral("toolWindowManagerState"));
   QApplication::quit();
 }

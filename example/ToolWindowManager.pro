@@ -12,6 +12,9 @@ TARGET = ToolWindowManager
 TEMPLATE = app
 
 
+# Disable conversions to/from const char * in QString
+DEFINES += QT_NO_CAST_FROM_ASCII QT_NO_CAST_TO_ASCII
+
 INCLUDEPATH += ../src
 
 SOURCES += main.cpp\
