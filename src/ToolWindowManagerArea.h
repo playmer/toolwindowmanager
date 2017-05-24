@@ -79,6 +79,11 @@ protected:
   //! Reimplemented from QTabWidget::eventFilter.
   virtual bool eventFilter(QObject *object, QEvent *event);
 
+  //! Reimplemented from QTabWidget::tabInserted.
+  virtual void tabInserted(int index);
+  //! Reimplemented from QTabWidget::tabRemoved.
+  virtual void tabRemoved(int index);
+
 private:
   ToolWindowManager* m_manager;
   bool m_dragCanStart; // indicates that user has started mouse movement on QTabWidget
@@ -94,6 +99,10 @@ private:
   bool m_inTabMoved; // if we're in the tabMoved() function (so if we call tabMove to cancel
                      // the movement, we shouldn't re-check the tabMoved behaviour)
 
+  QVector<int> m_tabSelectOrder; // This is the 'history' order of the tabs as they were selected,
+                                 // with most recently selected index last. Any time a tab is closed
+                                 // we select the last one on the list.
+
   QVariantMap saveState(); // dump contents to variable
   void restoreState(const QVariantMap& data); //restore contents from given variable
 
@@ -105,6 +114,8 @@ private:
 
 private slots:
   void tabMoved(int from, int to);
+  void tabSelected(int index);
+  void tabClosing(int index);
 };
 
 #endif // TOOLWINDOWMANAGERAREA_H

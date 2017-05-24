@@ -27,6 +27,7 @@
 #include <QApplication>
 #include <QMouseEvent>
 #include <QDebug>
+#include <algorithm>
 
 static void showCloseButton(QTabBar *bar, int index, bool show) {
   QWidget *button = bar->tabButton(index, QTabBar::RightSide);
@@ -52,6 +53,8 @@ ToolWindowManagerArea::ToolWindowManagerArea(ToolWindowManager *manager, QWidget
   m_manager->m_areas << this;
 
   QObject::connect(tabBar(), &QTabBar::tabMoved, this, &ToolWindowManagerArea::tabMoved);
+  QObject::connect(this, &QTabWidget::currentChanged, this, &ToolWindowManagerArea::tabSelected);
+  QObject::connect(this, &QTabWidget::tabCloseRequested, this, &ToolWindowManagerArea::tabClosing);
 }
 
 ToolWindowManagerArea::~ToolWindowManagerArea() {
@@ -172,6 +175,62 @@ bool ToolWindowManagerArea::eventFilter(QObject *object, QEvent *event) {
   return QTabWidget::eventFilter(object, event);
 }
 
+void ToolWindowManagerArea::tabInserted(int index) {
+  // update the select order. Increment any existing index after the insertion point to keep the
+  // indices in the list up to date.
+  for (int &idx : m_tabSelectOrder) {
+    if (idx >= index)
+      idx++;
+  }
+
+  // if the tab inserted is the current index (most likely) then add it at the end, otherwise
+  // add it next-to-end (to keep the most recent tab the same).
+  if (currentIndex() == index || m_tabSelectOrder.isEmpty())
+    m_tabSelectOrder.append(index);
+  else
+    m_tabSelectOrder.insert(m_tabSelectOrder.count()-1, index);
+
+  QTabWidget::tabInserted(index);
+}
+
+void ToolWindowManagerArea::tabRemoved(int index) {
+  // update the select order. Remove the index that just got deleted, and decrement any index
+  // greater than it to remap to their new indices
+  m_tabSelectOrder.removeOne(index);
+
+  for (int &idx : m_tabSelectOrder) {
+    if (idx > index)
+      idx--;
+  }
+
+  QTabWidget::tabRemoved(index);
+}
+
+void ToolWindowManagerArea::tabSelected(int index) {
+  // move this tab to the end of the select order, as long as we have it - if it's a new index then
+  // ignore and leave it to be handled in tabInserted()
+  if (m_tabSelectOrder.contains(index)) {
+    m_tabSelectOrder.removeOne(index);
+    m_tabSelectOrder.append(index);
+  }
+}
+
+void ToolWindowManagerArea::tabClosing(int index) {
+  // before closing this index, switch the current index to the next tab in succession.
+
+  // should never get here but let's check this
+  if (m_tabSelectOrder.isEmpty())
+    return;
+
+  // when closing the last tab there's nothing to do
+  if (m_tabSelectOrder.count() == 1)
+    return;
+
+  // if the last in the select order is being closed, switch to the next most selected tab
+  if (m_tabSelectOrder.last() == index)
+    setCurrentIndex(m_tabSelectOrder.at(m_tabSelectOrder.count()-2));
+}
+
 QVariantMap ToolWindowManagerArea::saveState() {
   QVariantMap result;
   result[QStringLiteral("type")] = QStringLiteral("area");
@@ -239,6 +298,17 @@ void ToolWindowManagerArea::check_mouse_move() {
 
 void ToolWindowManagerArea::tabMoved(int from, int to) {
   if(m_inTabMoved) return;
+
+  // update the select order.
+  // This amounts to just a swap - any indices other than the pair in question are unaffected since
+  // one tab is removed (above/below) and added (below/above) so the indices themselves remain the
+  // same.
+  for (int &idx : m_tabSelectOrder) {
+    if (idx == from)
+      idx = to;
+    else if (idx == to)
+      idx = from;
+  }
 
   QWidget *a = widget(from);
   QWidget *b = widget(to);
