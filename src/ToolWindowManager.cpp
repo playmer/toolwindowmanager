@@ -59,7 +59,7 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   m_dragIndicator->setAttribute(Qt::WA_ShowWithoutActivating);
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
-  ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this);
+  ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this, false);
   wrapper->setWindowFlags(wrapper->windowFlags() & ~Qt::Tool);
   mainLayout->addWidget(wrapper);
   connect(&m_dropSuggestionSwitchTimer, SIGNAL(timeout()),
@@ -150,7 +150,7 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
   } else if (area.type() == NewFloatingArea) {
     ToolWindowManagerArea* floatArea = createArea();
     floatArea->addToolWindows(toolWindows);
-    ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this);
+    ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this, true);
     wrapper->layout()->addWidget(floatArea);
     wrapper->move(QCursor::pos());
     wrapper->show();
@@ -389,7 +389,7 @@ void ToolWindowManager::restoreState(const QVariantMap &dataMap) {
   mainWrapper->restoreState(dataMap[QStringLiteral("mainWrapper")].toMap());
   QVariantList floatWins = dataMap[QStringLiteral("floatingWindows")].toList();
   foreach(QVariant windowData, floatWins) {
-    ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this);
+    ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this, true);
     wrapper->restoreState(windowData.toMap());
     wrapper->show();
     if(wrapper->windowState() && Qt::WindowMaximized)
@@ -496,7 +496,8 @@ void ToolWindowManager::simplifyLayout() {
   }
 }
 
-void ToolWindowManager::startDrag(const QList<QWidget *> &toolWindows) {
+void ToolWindowManager::startDrag(const QList<QWidget *> &toolWindows,
+                                  ToolWindowManagerWrapper *wrapper) {
   if (dragInProgress()) {
     qWarning("ToolWindowManager::execDrag: drag is already in progress");
     return;
@@ -505,6 +506,8 @@ void ToolWindowManager::startDrag(const QList<QWidget *> &toolWindows) {
     if(toolWindowProperties(toolWindow) & DisallowUserDocking) { return; }
   }
   if (toolWindows.isEmpty()) { return; }
+
+  m_draggedWrapper = wrapper;
   m_draggedToolWindows = toolWindows;
   m_dragIndicator->setPixmap(generateDragPixmap(toolWindows));
   updateDragPosition();
@@ -787,6 +790,10 @@ void ToolWindowManager::updateDragPosition() {
 
   QWidget* window = qApp->topLevelAt(pos);
   foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
+    // don't allow dragging a whole wrapper into a subset of itself
+    if (wrapper == m_draggedWrapper) {
+      continue;
+    }
     if (wrapper->window() == window) {
       if (wrapper->rect().contains(wrapper->mapFromGlobal(pos))) {
         findSuggestions(wrapper);
@@ -813,22 +820,28 @@ void ToolWindowManager::finishDrag() {
     return;
   }
   if (m_suggestions.isEmpty()) {
-    bool allowFloat = m_allowFloatingWindow;
 
-    for(QWidget *w : m_draggedToolWindows)
-      allowFloat &= !(toolWindowProperties(w) & DisallowFloatWindow);
+    // check if we're dragging a whole float window, if so we don't do anything except move it.
+    if (m_draggedWrapper) {
+      m_draggedWrapper->finishDragMove();
+    } else {
+      bool allowFloat = m_allowFloatingWindow;
 
-    if (m_allowFloatingWindow)
-    {
-      QRect r;
-      for(QWidget *w : m_draggedToolWindows)
-        r = r.united(w->rect());
+      for (QWidget *w : m_draggedToolWindows)
+        allowFloat &= !(toolWindowProperties(w) & DisallowFloatWindow);
 
-      moveToolWindows(m_draggedToolWindows, NewFloatingArea);
+      if (m_allowFloatingWindow)
+      {
+        QRect r;
+        for(QWidget *w : m_draggedToolWindows)
+          r = r.united(w->rect());
 
-      ToolWindowManagerArea *area = areaOf(m_draggedToolWindows[0]);
+        moveToolWindows(m_draggedToolWindows, NewFloatingArea);
 
-      area->parentWidget()->resize(r.size());
+        ToolWindowManagerArea *area = areaOf(m_draggedToolWindows[0]);
+
+        area->parentWidget()->resize(r.size());
+      }
     }
   } else {
     if (m_dropCurrentSuggestionIndex >= m_suggestions.count()) {

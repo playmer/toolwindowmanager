@@ -166,7 +166,7 @@ bool ToolWindowManagerArea::eventFilter(QObject *object, QEvent *event) {
                                                     static_cast<QMouseEvent*>(event)->pos(),
                                                     Qt::LeftButton, Qt::LeftButton, 0);
         qApp->sendEvent(tabBar(), releaseEvent);
-        m_manager->startDrag(QList<QWidget*>() << toolWindow);
+        m_manager->startDrag(QList<QWidget*>() << toolWindow, NULL);
       } else if (m_dragCanStart) {
         check_mouse_move();
       }
@@ -292,7 +292,7 @@ void ToolWindowManagerArea::check_mouse_move() {
         toolWindows << toolWindow;
       }
     }
-    m_manager->startDrag(toolWindows);
+    m_manager->startDrag(toolWindows, NULL);
   }
 }
 

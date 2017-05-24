@@ -25,10 +25,11 @@
 #ifndef TOOLWINDOWMANAGERWRAPPER_H
 #define TOOLWINDOWMANAGERWRAPPER_H
 
-#include <QWidget>
+#include <QFrame>
 #include <QVariantMap>
 
 class ToolWindowManager;
+class QLabel;
 
 /*!
  * \brief The ToolWindowManagerWrapper class is used by ToolWindowManager to wrap its content.
@@ -36,22 +37,34 @@ class ToolWindowManager;
  * All other wrappers are top level floating windows that contain detached tool windows.
  *
  */
-class ToolWindowManagerWrapper : public QWidget {
+class ToolWindowManagerWrapper : public QFrame {
   Q_OBJECT
 public:
   //! Creates new wrapper.
-  explicit ToolWindowManagerWrapper(ToolWindowManager* manager);
+  explicit ToolWindowManagerWrapper(ToolWindowManager* manager, bool floating);
   //! Removes the wrapper.
   virtual ~ToolWindowManagerWrapper();
 
   ToolWindowManager* manager() { return m_manager; }
 
+  //finish a drag by just moving the window (if nothing was dragged from one wrapper/area to another)
+  void finishDragMove();
+
 protected:
   //! Reimplemented to register hiding of contained tool windows when user closes the floating window.
   virtual void closeEvent(QCloseEvent *);
 
+  //! Event filter for grabbing and processing mouse drags as toolwindow drags.
+  virtual bool eventFilter(QObject *object, QEvent *event);
+
 private:
   ToolWindowManager* m_manager;
+
+  QLabel* m_titlebar;
+
+  bool m_dragReady; // we've clicked and started moving but haven't moved enough yet
+  QPoint m_dragStartCursor, m_dragStartPos; // cursor and window pos at the click to start a drag
+  bool m_dragActive; // whether a drag currently on-going
 
   //dump content's layout to variable
   QVariantMap saveState();

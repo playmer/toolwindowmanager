@@ -295,6 +295,7 @@ private:
   int m_rubberBandLineWidth;
   // list of tool windows that are currently dragged, or empty list if there is no current drag
   QList<QWidget*> m_draggedToolWindows;
+  ToolWindowManagerWrapper* m_draggedWrapper;
   QLabel* m_dragIndicator; // label used to display dragged content
 
   QRubberBand* m_rectRubberBand; // placeholder objects used for displaying drop suggestions
@@ -314,7 +315,7 @@ private:
   //remove tool window from its area (if any) and set parent to 0
   void releaseToolWindow(QWidget* toolWindow);
   void simplifyLayout(); //remove constructions that became useless
-  void startDrag(const QList<QWidget*>& toolWindows);
+  void startDrag(const QList<QWidget*>& toolWindows, ToolWindowManagerWrapper *wrapper);
 
   QVariantMap saveSplitterState(QSplitter* splitter);
   QSplitter* restoreSplitterState(const QVariantMap& data);
