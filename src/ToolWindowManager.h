@@ -54,37 +54,6 @@ class ToolWindowManagerWrapper;
 class ToolWindowManager : public QWidget {
   Q_OBJECT
   /*!
-   * \brief The delay between showing the next suggestion of drop location in milliseconds.
-   *
-   * When user starts a tool window drag and moves mouse pointer to a position, there can be
-   * an ambiguity in new position of the tool window. If user holds the left mouse button and
-   * stops mouse movements, all possible suggestions will be indicated periodically, one at a time.
-   *
-   * Default value is 1000 (i.e. 1 second).
-   *
-   * Access functions: suggestionSwitchInterval, setSuggestionSwitchInterval.
-   *
-   */
-  Q_PROPERTY(int suggestionSwitchInterval READ suggestionSwitchInterval WRITE setSuggestionSwitchInterval)
-  /*!
-   * \brief Maximal distance in pixels between mouse position and area border that allows
-   * to display a suggestion.
-   *
-   * Default value is 12.
-   *
-   * Access functions: borderSensitivity, setBorderSensitivity.
-   */
-  Q_PROPERTY(int borderSensitivity READ borderSensitivity WRITE setBorderSensitivity)
-  /*!
-   * \brief Visible width of rubber band line that is used to display drop suggestions.
-   *
-   * Default value is the same as QSplitter::handleWidth default value on current platform.
-   *
-   * Access functions: rubberBandLineWidth, setRubberBandLineWidth.
-   *
-   */
-  Q_PROPERTY(int rubberBandLineWidth READ rubberBandLineWidth WRITE setRubberBandLineWidth)
-  /*!
    * \brief Whether or not to allow floating windows to be created.
    *
    * Default value is to allow it.
@@ -258,25 +227,9 @@ public:
   bool checkValidSplitter(QWidget *w);
 
   /*! \cond PRIVATE */
-  void setSuggestionSwitchInterval(int msec);
-  int suggestionSwitchInterval();
-  int borderSensitivity() { return m_borderSensitivity; }
-  void setBorderSensitivity(int pixels);
-  void setRubberBandLineWidth(int pixels);
-  int rubberBandLineWidth() { return m_rubberBandLineWidth; }
   void setAllowFloatingWindow(bool pixels);
   bool allowFloatingWindow() { return m_allowFloatingWindow; }
   /*! \endcond */
-
-  /*!
-   * Returns the widget that is used to display rectangular drop suggestions.
-   */
-  QRubberBand* rectRubberBand() { return m_rectRubberBand; }
-
-  /*!
-   * Returns the widget that is used to display line drop suggestions.
-   */
-  QRubberBand* lineRubberBand() { return m_lineRubberBand; }
 
 
 signals:
@@ -291,27 +244,19 @@ private:
   QHash<QWidget*, ToolWindowProperty> m_toolWindowProperties; // all tool window properties
   QList<ToolWindowManagerArea*> m_areas; // all areas for this manager
   QList<ToolWindowManagerWrapper*> m_wrappers; // all wrappers for this manager
-  int m_borderSensitivity;
-  int m_rubberBandLineWidth;
   // list of tool windows that are currently dragged, or empty list if there is no current drag
   QList<QWidget*> m_draggedToolWindows;
-  ToolWindowManagerWrapper* m_draggedWrapper;
+  ToolWindowManagerWrapper* m_draggedWrapper; // the wrapper if a whole float window is being dragged
+  ToolWindowManagerArea* m_hoverArea; // the area currently being hovered over in a drag
   QWidget* m_overlay;
 
-  QRubberBand* m_rectRubberBand; // placeholder objects used for displaying drop suggestions
-  QRubberBand* m_lineRubberBand;
   bool m_allowFloatingWindow; // Allow floating windows from this docking area
-  QList<AreaReference> m_suggestions; //full list of suggestions for current cursor position
-  int m_dropCurrentSuggestionIndex; // index of currently displayed drop suggestion
-                                    // (e.g. always 0 if there is only one possible drop location)
-  QTimer m_dropSuggestionSwitchTimer; // used for switching drop suggestions
 
   CreateCallback m_createCallback;
 
   // last widget used for adding tool windows, or 0 if there isn't one
   // (warning: may contain pointer to deleted object)
   ToolWindowManagerArea* m_lastUsedArea;
-  void handleNoSuggestions();
   //remove tool window from its area (if any) and set parent to 0
   void releaseToolWindow(QWidget* toolWindow);
   void simplifyLayout(); //remove constructions that became useless
@@ -319,9 +264,6 @@ private:
 
   QVariantMap saveSplitterState(QSplitter* splitter);
   QSplitter* restoreSplitterState(const QVariantMap& data);
-  void findSuggestions(ToolWindowManagerWrapper *wrapper);
-  QRect sideSensitiveArea(QWidget* widget, AreaReferenceType side);
-  QRect sidePlaceHolderRect(QWidget* widget, AreaReferenceType side);
 
   void updateDragPosition();
   void abortDrag();
@@ -349,7 +291,6 @@ protected:
   virtual ToolWindowManagerArea *createArea();
 
 private slots:
-  void showNextDropSuggestion();
   void tabCloseRequested(int index);
   void windowTitleChanged(const QString &title);
 

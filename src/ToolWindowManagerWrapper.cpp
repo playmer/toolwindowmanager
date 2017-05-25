@@ -38,8 +38,6 @@ ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, b
   setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint);
   setWindowTitle(QStringLiteral(" "));
 
-  m_overlay = manager->createDragOverlayWidget();
-
   m_dragReady = false;
   m_dragActive = false;
 
@@ -65,7 +63,6 @@ ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, b
 }
 
 ToolWindowManagerWrapper::~ToolWindowManagerWrapper() {
-  delete m_overlay;
   m_manager->m_wrappers.removeOne(this);
 }
 
@@ -75,18 +72,6 @@ void ToolWindowManagerWrapper::closeEvent(QCloseEvent *) {
     toolWindows << tabWidget->toolWindows();
   }
   m_manager->moveToolWindows(toolWindows, ToolWindowManager::NoArea);
-}
-
-void ToolWindowManagerWrapper::showOverlay() {
-  m_overlay->show();
-  QRect g = geometry();
-  if (!m_titlebar)
-    g.moveTopLeft(mapToGlobal(g.topLeft()));
-  m_overlay->setGeometry(g);
-}
-
-void ToolWindowManagerWrapper::hideOverlay() {
-  m_overlay->hide();
 }
 
 void ToolWindowManagerWrapper::finishDragMove() {

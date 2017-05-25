@@ -51,27 +51,19 @@ T findClosestParent(QWidget* widget) {
 ToolWindowManager::ToolWindowManager(QWidget *parent) :
   QWidget(parent)
 {
-  m_borderSensitivity = 12;
-  QSplitter* testSplitter = new QSplitter();
-  m_rubberBandLineWidth = testSplitter->handleWidth();
-  delete testSplitter;
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
   ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this, false);
   wrapper->setWindowFlags(wrapper->windowFlags() & ~Qt::Tool);
   mainLayout->addWidget(wrapper);
-  connect(&m_dropSuggestionSwitchTimer, SIGNAL(timeout()),
-          this, SLOT(showNextDropSuggestion()));
-  m_dropSuggestionSwitchTimer.setInterval(1000);
-  m_dropCurrentSuggestionIndex = 0;
   m_allowFloatingWindow = true;
   m_createCallback = NULL;
   m_lastUsedArea = NULL;
 
-  m_overlay = createDragOverlayWidget();
+  m_draggedWrapper = NULL;
+  m_hoverArea = NULL;
 
-  m_rectRubberBand = new QRubberBand(QRubberBand::Rectangle, this);
-  m_lineRubberBand = new QRubberBand(QRubberBand::Line, this);
+  m_overlay = createDragOverlayWidget();
 }
 
 ToolWindowManager::~ToolWindowManager() {
@@ -337,22 +329,6 @@ QWidget* ToolWindowManager::createToolWindow(const QString& objectName)
   return NULL;
 }
 
-void ToolWindowManager::setSuggestionSwitchInterval(int msec) {
-  m_dropSuggestionSwitchTimer.setInterval(msec);
-}
-
-int ToolWindowManager::suggestionSwitchInterval() {
-  return m_dropSuggestionSwitchTimer.interval();
-}
-
-void ToolWindowManager::setBorderSensitivity(int pixels) {
-  m_borderSensitivity = pixels;
-}
-
-void ToolWindowManager::setRubberBandLineWidth(int pixels) {
-  m_rubberBandLineWidth = pixels;
-}
-
 void ToolWindowManager::setAllowFloatingWindow(bool allow) {
   m_allowFloatingWindow = allow;
 }
@@ -410,19 +386,6 @@ ToolWindowManagerArea *ToolWindowManager::createArea() {
   connect(area, SIGNAL(tabCloseRequested(int)),
           this, SLOT(tabCloseRequested(int)));
   return area;
-}
-
-
-void ToolWindowManager::handleNoSuggestions() {
-  m_rectRubberBand->hide();
-  m_lineRubberBand->hide();
-  m_lineRubberBand->setParent(this);
-  m_rectRubberBand->setParent(this);
-  m_suggestions.clear();
-  m_dropCurrentSuggestionIndex = 0;
-  if (m_dropSuggestionSwitchTimer.isActive()) {
-    m_dropSuggestionSwitchTimer.stop();
-  }
 }
 
 void ToolWindowManager::releaseToolWindow(QWidget *toolWindow) {
@@ -563,207 +526,6 @@ QSplitter *ToolWindowManager::restoreSplitterState(const QVariantMap &savedData)
   return splitter;
 }
 
-void ToolWindowManager::showNextDropSuggestion() {
-  if (m_suggestions.isEmpty()) {
-    qWarning("showNextDropSuggestion called but no suggestions");
-    return;
-  }
-  m_dropCurrentSuggestionIndex++;
-  if (m_dropCurrentSuggestionIndex >= m_suggestions.count()) {
-    m_dropCurrentSuggestionIndex = 0;
-  }
-  const AreaReference& suggestion = m_suggestions[m_dropCurrentSuggestionIndex];
-  if (suggestion.type() == AddTo || suggestion.type() == EmptySpace) {
-    QWidget* widget;
-    if (suggestion.type() == EmptySpace) {
-      widget = findChild<ToolWindowManagerWrapper*>();
-    } else {
-      widget = suggestion.widget();
-    }
-    QWidget* placeHolderParent;
-    if (widget->topLevelWidget() == topLevelWidget()) {
-      placeHolderParent = this;
-    } else {
-      placeHolderParent = widget->topLevelWidget();
-    }
-    QRect placeHolderGeometry = widget->rect();
-    placeHolderGeometry.moveTopLeft(widget->mapTo(placeHolderParent,
-                                                             placeHolderGeometry.topLeft()));
-    m_rectRubberBand->setGeometry(placeHolderGeometry);
-    m_rectRubberBand->setParent(placeHolderParent);
-    m_rectRubberBand->show();
-    m_lineRubberBand->hide();
-  } else if (suggestion.type() == LeftOf || suggestion.type() == RightOf ||
-             suggestion.type() == TopOf || suggestion.type() == BottomOf) {
-    QWidget* placeHolderParent;
-    if (suggestion.widget()->topLevelWidget() == topLevelWidget()) {
-      placeHolderParent = this;
-    } else {
-      placeHolderParent = suggestion.widget()->topLevelWidget();
-    }
-    QRect placeHolderGeometry = sidePlaceHolderRect(suggestion.widget(), suggestion.type());
-    placeHolderGeometry.moveTopLeft(suggestion.widget()->mapTo(placeHolderParent,
-                                                             placeHolderGeometry.topLeft()));
-
-    m_lineRubberBand->setGeometry(placeHolderGeometry);
-    m_lineRubberBand->setParent(placeHolderParent);
-    m_lineRubberBand->show();
-    m_rectRubberBand->hide();
-  } else {
-    qWarning("unsupported suggestion type");
-  }
-}
-
-void ToolWindowManager::findSuggestions(ToolWindowManagerWrapper* wrapper) {
-  m_suggestions.clear();
-  m_dropCurrentSuggestionIndex = -1;
-  QPoint globalPos = QCursor::pos();
-  QList<QWidget*> candidates;
-  foreach(QSplitter* splitter, wrapper->findChildren<QSplitter*>()) {
-    // make sure this is one of our layout splitters, not a proper widget or a splitter
-    // from another manager. We walk the parents, expecting either a QSplitter or QTabWidget
-    // at each time until we reach an area.
-
-    QWidget *w = splitter;
-
-    bool valid = false;
-
-    while(w)
-    {
-      QWidget *parent = w->parentWidget();
-
-      QSplitter *parentSplitter = qobject_cast<QSplitter*>(parent);
-      QTabWidget *parentTab = qobject_cast<QTabWidget*>(parent);
-
-      // keep recursing up what looks like our hierarchy
-      if(parentSplitter || parentTab)
-      {
-        w = parent;
-        continue;
-      }
-
-      ToolWindowManagerArea* areaParent = qobject_cast<ToolWindowManagerArea*>(parent);
-      ToolWindowManagerWrapper* wrapperParent = qobject_cast<ToolWindowManagerWrapper*>(parent);
-
-      // if it's an area or wrapper, check if it's ours
-      if(areaParent)
-        valid = areaParent->manager() == this;
-      else if(wrapperParent)
-        valid = wrapperParent->manager() == this;
-
-      // we're done now, whether we checked for validity, or if we
-      // found something that's none of the above
-      break;
-    }
-
-    if(valid)
-      candidates << splitter;
-  }
-  foreach(ToolWindowManagerArea* area, m_areas) {
-    if (area->topLevelWidget() == wrapper->topLevelWidget()) {
-      candidates << area;
-    }
-  }
-  for(QWidget* widget : candidates) {
-    QSplitter* splitter = qobject_cast<QSplitter*>(widget);
-    ToolWindowManagerArea* area = qobject_cast<ToolWindowManagerArea*>(widget);
-    if (!splitter && !area) {
-      qWarning("unexpected widget type");
-      continue;
-    }
-    QSplitter* parentSplitter = qobject_cast<QSplitter*>(widget->parentWidget());
-    bool lastInSplitter = parentSplitter &&
-        parentSplitter->indexOf(widget) == parentSplitter->count() - 1;
-
-    QList<AreaReferenceType> allowedSides;
-    if (!splitter || splitter->orientation() == Qt::Vertical) {
-      allowedSides << LeftOf;
-    }
-    if (!splitter || splitter->orientation() == Qt::Horizontal) {
-      allowedSides << TopOf;
-    }
-    if (!parentSplitter || parentSplitter->orientation() == Qt::Vertical || lastInSplitter) {
-      if (!splitter || splitter->orientation() == Qt::Vertical) {
-        allowedSides << RightOf;
-      }
-    }
-    if (!parentSplitter || parentSplitter->orientation() == Qt::Horizontal || lastInSplitter) {
-      if (!splitter || splitter->orientation() == Qt::Horizontal) {
-        allowedSides << BottomOf;
-      }
-    }
-    for(AreaReferenceType side : allowedSides) {
-      if (sideSensitiveArea(widget, side).contains(widget->mapFromGlobal(globalPos))) {
-        m_suggestions << AreaReference(side, widget);
-      }
-    }
-    if (area && area->allowUserDrop() && area->rect().contains(area->mapFromGlobal(globalPos))) {
-      m_suggestions << AreaReference(AddTo, area);
-    }
-  }
-  if (candidates.isEmpty()) {
-    m_suggestions << EmptySpace;
-  }
-
-  if (m_suggestions.isEmpty()) {
-    handleNoSuggestions();
-  } else {
-    showNextDropSuggestion();
-  }
-}
-
-QRect ToolWindowManager::sideSensitiveArea(QWidget *widget, ToolWindowManager::AreaReferenceType side) {
-  QRect widgetRect = widget->rect();
-  if (side == TopOf) {
-    return QRect(QPoint(widgetRect.left(), widgetRect.top() - m_borderSensitivity),
-                 QSize(widgetRect.width(), m_borderSensitivity * 2));
-  } else if (side == LeftOf) {
-    return QRect(QPoint(widgetRect.left() - m_borderSensitivity, widgetRect.top()),
-                 QSize(m_borderSensitivity * 2, widgetRect.height()));
-
-  } else if (side == BottomOf) {
-    return QRect(QPoint(widgetRect.left(), widgetRect.top() + widgetRect.height() - m_borderSensitivity),
-                 QSize(widgetRect.width(), m_borderSensitivity * 2));
-  } else if (side == RightOf) {
-    return QRect(QPoint(widgetRect.left() + widgetRect.width() - m_borderSensitivity, widgetRect.top()),
-                 QSize(m_borderSensitivity * 2, widgetRect.height()));
-  } else {
-    qWarning("invalid side");
-    return QRect();
-  }
-}
-
-QRect ToolWindowManager::sidePlaceHolderRect(QWidget *widget, ToolWindowManager::AreaReferenceType side) {
-  QRect widgetRect = widget->rect();
-  QSplitter* parentSplitter = qobject_cast<QSplitter*>(widget->parentWidget());
-  if (parentSplitter && parentSplitter->indexOf(widget) > 0) {
-    int delta = parentSplitter->handleWidth() / 2 + m_rubberBandLineWidth / 2;
-    if (side == TopOf && parentSplitter->orientation() == Qt::Vertical) {
-      return QRect(QPoint(widgetRect.left(), widgetRect.top() - delta),
-                   QSize(widgetRect.width(), m_rubberBandLineWidth));
-    } else if (side == LeftOf && parentSplitter->orientation() == Qt::Horizontal) {
-      return QRect(QPoint(widgetRect.left() - delta, widgetRect.top()),
-                   QSize(m_rubberBandLineWidth, widgetRect.height()));
-    }
-  }
-  if (side == TopOf) {
-    return QRect(QPoint(widgetRect.left(), widgetRect.top()),
-                 QSize(widgetRect.width(), m_rubberBandLineWidth));
-  } else if (side == LeftOf) {
-    return QRect(QPoint(widgetRect.left(), widgetRect.top()),
-                 QSize(m_rubberBandLineWidth, widgetRect.height()));
-  } else if (side == BottomOf) {
-    return QRect(QPoint(widgetRect.left(), widgetRect.top() + widgetRect.height() - m_rubberBandLineWidth),
-                 QSize(widgetRect.width(), m_rubberBandLineWidth));
-  } else if (side == RightOf) {
-    return QRect(QPoint(widgetRect.left() + widgetRect.width() - m_rubberBandLineWidth, widgetRect.top()),
-                 QSize(m_rubberBandLineWidth, widgetRect.height()));
-  } else {
-    qWarning("invalid side");
-    return QRect();
-  }
-}
-
 void ToolWindowManager::updateDragPosition() {
   if (!dragInProgress()) { return; }
   if (!(qApp->mouseButtons() & Qt::LeftButton)) {
@@ -772,60 +534,22 @@ void ToolWindowManager::updateDragPosition() {
   }
 
   QPoint pos = QCursor::pos();
-  ToolWindowManagerWrapper* foundWrapper = NULL;
+  m_hoverArea = NULL;
 
-  m_suggestions.clear();
-
-  // find the first toplevel widget that isn't an overlay widget
-  QWidget* window = NULL;
-  foreach(QWidget *tl, qApp->topLevelWidgets()) {
-    bool isOverlay = tl == m_overlay;
-
-    foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
-      qInfo() << wrapper->overlay();
-      if (wrapper->overlay() == tl) {
-        isOverlay = true;
-        break;
-      }
-    }
-
-    if (isOverlay)
-      continue;
-
-    if (tl->rect().contains(tl->mapFromGlobal(pos))) {
-      window = tl;
-      break;
-    }
-  }
-
-  foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
+  foreach(ToolWindowManagerArea* area, m_areas) {
     // don't allow dragging a whole wrapper into a subset of itself
-    if (wrapper == m_draggedWrapper) {
+    if (m_draggedWrapper && area->window() == m_draggedWrapper->window()) {
       continue;
     }
-    if (wrapper->window() == window) {
-      if (wrapper->rect().contains(wrapper->mapFromGlobal(pos))) {
-        wrapper->showOverlay();
-        findSuggestions(wrapper);
-        foundWrapper = wrapper;
-        if (!m_suggestions.isEmpty()) {
-          //starting or restarting timer
-          if (m_dropSuggestionSwitchTimer.isActive()) {
-            m_dropSuggestionSwitchTimer.stop();
-          }
-          m_dropSuggestionSwitchTimer.start();
-        }
-      }
+    if (area->rect().contains(area->mapFromGlobal(pos))) {
+      QRect g = area->geometry();
+      g.moveTopLeft(area->parentWidget()->mapToGlobal(g.topLeft()));
+      m_overlay->setGeometry(g);
+      m_hoverArea = area;
       break;
     }
   }
-  foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
-    if(wrapper != foundWrapper)
-      wrapper->hideOverlay();
-  }
-  if (m_suggestions.isEmpty()) {
-    m_overlay->show();
-
+  if (m_hoverArea == NULL) {
     if (m_draggedWrapper) {
       m_overlay->setGeometry(m_draggedWrapper->dragGeometry());
     } else {
@@ -834,12 +558,9 @@ void ToolWindowManager::updateDragPosition() {
         r = r.united(w->rect());
       m_overlay->setGeometry(pos.x(), pos.y(), r.width(), r.height());
     }
-
-    handleNoSuggestions();
-  } else {
-    if (m_overlay->isVisible())
-      m_overlay->hide();
   }
+  m_overlay->show();
+}
 
 void ToolWindowManager::abortDrag() {
   if (!dragInProgress())
@@ -857,12 +578,8 @@ void ToolWindowManager::finishDrag() {
     return;
   }
   qApp->removeEventFilter(this);
-  foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
-    wrapper->hideOverlay();
-  }
   m_overlay->hide();
-  if (m_suggestions.isEmpty()) {
-
+  if (m_hoverArea == NULL) {
     // check if we're dragging a whole float window, if so we don't do anything except move it.
     if (m_draggedWrapper) {
       m_draggedWrapper->finishDragMove();
@@ -886,13 +603,8 @@ void ToolWindowManager::finishDrag() {
       }
     }
   } else {
-    if (m_dropCurrentSuggestionIndex >= m_suggestions.count()) {
-      qWarning("invalid m_dropCurrentSuggestionIndex");
-      return;
-    }
-    ToolWindowManager::AreaReference suggestion = m_suggestions[m_dropCurrentSuggestionIndex];
-    handleNoSuggestions();
-    moveToolWindows(m_draggedToolWindows, suggestion);
+    ToolWindowManager::AreaReference dropTarget = AreaReference(AddTo, m_hoverArea);
+    moveToolWindows(m_draggedToolWindows, dropTarget);
   }
 
   m_draggedToolWindows.clear();
