@@ -324,6 +324,7 @@ private:
   QRect sidePlaceHolderRect(QWidget* widget, AreaReferenceType side);
 
   void updateDragPosition();
+  void abortDrag();
   void finishDrag();
   bool dragInProgress() { return !m_draggedToolWindows.isEmpty(); }
 
@@ -333,6 +334,9 @@ private:
   friend class ToolWindowManagerWrapper;
 
 protected:
+  //! Event filter for grabbing and processing drag aborts.
+  virtual bool eventFilter(QObject *object, QEvent *event);
+
   /*!
    * \brief Creates new splitter and sets its default properties. You may reimplement
    * this function to change properties of all splitters used by this class.

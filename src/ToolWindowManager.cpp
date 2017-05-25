@@ -511,6 +511,7 @@ void ToolWindowManager::startDrag(const QList<QWidget *> &toolWindows,
   m_draggedWrapper = wrapper;
   m_draggedToolWindows = toolWindows;
   updateDragPosition();
+  qApp->installEventFilter(this);
 }
 
 QVariantMap ToolWindowManager::saveSplitterState(QSplitter *splitter) {
@@ -839,6 +840,15 @@ void ToolWindowManager::updateDragPosition() {
     if (m_overlay->isVisible())
       m_overlay->hide();
   }
+
+void ToolWindowManager::abortDrag() {
+  if (!dragInProgress())
+    return;
+
+  m_overlay->hide();
+  m_draggedToolWindows.clear();
+  m_draggedWrapper = NULL;
+  qApp->removeEventFilter(this);
 }
 
 void ToolWindowManager::finishDrag() {
@@ -846,6 +856,7 @@ void ToolWindowManager::finishDrag() {
     qWarning("unexpected finishDrag");
     return;
   }
+  qApp->removeEventFilter(this);
   foreach(ToolWindowManagerWrapper* wrapper, m_wrappers) {
     wrapper->hideOverlay();
   }
@@ -885,6 +896,21 @@ void ToolWindowManager::finishDrag() {
   }
 
   m_draggedToolWindows.clear();
+}
+
+bool ToolWindowManager::eventFilter(QObject *object, QEvent *event) {
+  if (event->type() == QEvent::MouseButtonRelease) {
+    // right clicking aborts any drag in progress
+    if (static_cast<QMouseEvent*>(event)->button() == Qt::RightButton)
+      abortDrag();
+  } else if (event->type() == QEvent::KeyPress) {
+    // pressing escape any drag in progress
+    QKeyEvent *ke = (QKeyEvent *)event;
+    if(ke->key() == Qt::Key_Escape) {
+      abortDrag();
+    }
+  }
+  return QWidget::eventFilter(object, event);
 }
 
 void ToolWindowManager::tabCloseRequested(int index) {
