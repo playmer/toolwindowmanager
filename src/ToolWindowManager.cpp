@@ -595,7 +595,11 @@ void ToolWindowManager::updateDragPosition() {
     }
   }
   if (m_hoverArea) {
-    m_dropHotspotsOverlay->setGeometry(m_hoverArea->window()->geometry());
+    ToolWindowManagerWrapper* wrapper = findClosestParent<ToolWindowManagerWrapper*>(m_hoverArea);
+    QRect wrapperGeometry;
+    wrapperGeometry.setSize(wrapper->rect().size());
+    wrapperGeometry.moveTo(wrapper->mapToGlobal(QPoint(0,0)));
+    m_dropHotspotsOverlay->setGeometry(wrapperGeometry);
 
     QRect areaClientRect;
 
