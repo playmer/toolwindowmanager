@@ -26,11 +26,6 @@
 #define TOOLWINDOWMANAGER_H
 
 #include <QWidget>
-#include <QSplitter>
-#include <QTabWidget>
-#include <QTabBar>
-#include <QTimer>
-#include <QRubberBand>
 #include <QHash>
 #include <QVariant>
 #include <QLabel>
@@ -40,6 +35,8 @@
 class ToolWindowManagerArea;
 class ToolWindowManagerWrapper;
 
+class QLabel;
+class QSplitter;
 
 /*!
  * \brief The ToolWindowManager class provides docking tool behavior.

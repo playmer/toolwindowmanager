@@ -36,6 +36,8 @@
 #include <QPainter>
 #include <QDesktopWidget>
 #include <QScreen>
+#include <QSplitter>
+#include <QTabBar>
 
 template<class T>
 T findClosestParent(QWidget* widget) {

@@ -30,6 +30,7 @@
 #include <QMimeData>
 #include <QDebug>
 #include <QApplication>
+#include <QSplitter>
 
 ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, bool floating) :
   QFrame(manager)
