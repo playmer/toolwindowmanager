@@ -46,12 +46,12 @@ public:
   /*!
    * Add \a toolWindow to this area.
    */
-  void addToolWindow(QWidget* toolWindow);
+  void addToolWindow(QWidget* toolWindow, int insertIndex = -1);
 
   /*!
    * Add \a toolWindows to this area.
    */
-  void addToolWindows(const QList<QWidget*>& toolWindows);
+  void addToolWindows(const QList<QWidget*>& toolWindows, int insertIndex = -1);
 
   void enableUserDrop() { m_userCanDrop = true; }
   void disableUserDrop() { m_userCanDrop = false; }

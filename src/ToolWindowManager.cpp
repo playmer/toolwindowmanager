@@ -195,7 +195,11 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
     wrapper->move(QCursor::pos());
     wrapper->show();
   } else if (area.type() == AddTo) {
-    area.area()->addToolWindows(toolWindows);
+    int idx = -1;
+    if (area.dragResult) {
+      idx = area.area()->tabBar()->tabAt(area.area()->tabBar()->mapFromGlobal(QCursor::pos()));
+    }
+    area.area()->addToolWindows(toolWindows, idx);
   } else if (area.type() == LeftWindowSide || area.type() == RightWindowSide ||
              area.type() == TopWindowSide || area.type() == BottomWindowSide) {
     ToolWindowManagerWrapper* wrapper = findClosestParent<ToolWindowManagerWrapper*>(area.area());
@@ -829,30 +833,37 @@ void ToolWindowManager::updateDragPosition() {
     QRect g = parent->geometry();
     g.moveTopLeft(parent->parentWidget()->mapToGlobal(g.topLeft()));
 
-    if(hotspot == LeftOf)
+    if (hotspot == LeftOf)
       g.adjust(0, 0, -g.width()/2, 0);
-    else if(hotspot == RightOf)
+    else if (hotspot == RightOf)
       g.adjust(g.width()/2, 0, 0, 0);
-    else if(hotspot == TopOf)
+    else if (hotspot == TopOf)
       g.adjust(0, 0, 0, -g.height()/2);
-    else if(hotspot == BottomOf)
+    else if (hotspot == BottomOf)
       g.adjust(0, g.height()/2, 0, 0);
 
     QRect tabGeom;
 
-    if(hotspot == AddTo && m_hoverArea && m_hoverArea->count() > 1)
-    {
-      g.adjust(0, m_hoverArea->tabBar()->rect().height(), 0, 0);
+    if (hotspot == AddTo && m_hoverArea && m_hoverArea->count() > 1) {
+      QTabBar* tb = m_hoverArea->tabBar();
+      g.adjust(0, tb->rect().height(), 0, 0);
 
-      tabGeom = m_hoverArea->tabBar()->tabRect(m_hoverArea->count()-1);
-      tabGeom.moveTo(m_hoverArea->tabBar()->mapToGlobal(QPoint(0,0)) + tabGeom.topLeft());
+      int idx = tb->tabAt(tb->mapFromGlobal(pos));
 
-      // move the tab one to the right, to indicate the tab is being added after the last one.
-      tabGeom.moveLeft(tabGeom.left() + tabGeom.width());
+      if (idx == -1) {
+        tabGeom = tb->tabRect(m_hoverArea->count()-1);
+        tabGeom.moveTo(tb->mapToGlobal(QPoint(0,0)) + tabGeom.topLeft());
 
-      // clamp from the right, to ensure we don't display any tab off the end of the range
-      if(tabGeom.right() > g.right())
-        tabGeom.moveLeft(g.right() - tabGeom.width());
+        // move the tab one to the right, to indicate the tab is being added after the last one.
+        tabGeom.moveLeft(tabGeom.left() + tabGeom.width());
+
+        // clamp from the right, to ensure we don't display any tab off the end of the range
+        if(tabGeom.right() > g.right())
+          tabGeom.moveLeft(g.right() - tabGeom.width());
+      } else {
+        tabGeom = tb->tabRect(idx);
+        tabGeom.moveTo(tb->mapToGlobal(QPoint(0,0)) + tabGeom.topLeft());
+      }
     }
 
     m_previewOverlay->setGeometry(g);
@@ -948,10 +959,13 @@ void ToolWindowManager::finishDrag() {
       }
     }
   } else {
-    if (m_hoverArea)
-      moveToolWindows(m_draggedToolWindows, AreaReference(hotspot, m_hoverArea));
-    else
+    if (m_hoverArea) {
+      AreaReference ref(hotspot, m_hoverArea);
+      ref.dragResult = true;
+      moveToolWindows(m_draggedToolWindows, ref);
+    } else {
       moveToolWindows(m_draggedToolWindows, AreaReference(EmptySpace));
+    }
   }
 
   m_draggedToolWindows.clear();
@@ -1052,6 +1066,12 @@ ToolWindowManager::AreaReferenceType ToolWindowManager::currentHotspot() {
     }
   }
 
+  if (m_hoverArea) {
+    QTabBar* tb = m_hoverArea->tabBar();
+    if (tb->rect().contains(tb->mapFromGlobal(QCursor::pos())))
+      return AddTo;
+  }
+
   return NewFloatingArea;
 }
 
@@ -1118,6 +1138,7 @@ QSplitter *ToolWindowManager::createSplitter() {
 ToolWindowManager::AreaReference::AreaReference(ToolWindowManager::AreaReferenceType type, ToolWindowManagerArea *area, float percentage) {
   m_type = type;
   m_percentage = percentage;
+  dragResult = false;
   setWidget(area);
 }
 
@@ -1149,5 +1170,6 @@ ToolWindowManagerArea *ToolWindowManager::AreaReference::area() const {
 
 ToolWindowManager::AreaReference::AreaReference(ToolWindowManager::AreaReferenceType type, QWidget *widget) {
   m_type = type;
+  dragResult = false;
   setWidget(widget);
 }

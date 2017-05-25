@@ -66,14 +66,15 @@ ToolWindowManagerArea::~ToolWindowManagerArea() {
   m_manager->m_areas.removeOne(this);
 }
 
-void ToolWindowManagerArea::addToolWindow(QWidget *toolWindow) {
-  addToolWindows(QList<QWidget*>() << toolWindow);
+void ToolWindowManagerArea::addToolWindow(QWidget *toolWindow, int insertIndex) {
+  addToolWindows(QList<QWidget*>() << toolWindow, insertIndex);
 }
 
-void ToolWindowManagerArea::addToolWindows(const QList<QWidget *> &toolWindows) {
+void ToolWindowManagerArea::addToolWindows(const QList<QWidget *> &toolWindows, int insertIndex) {
   int index = 0;
   foreach(QWidget* toolWindow, toolWindows) {
-    index = addTab(toolWindow, toolWindow->windowIcon(), toolWindow->windowTitle());
+    index = insertTab(insertIndex, toolWindow, toolWindow->windowIcon(), toolWindow->windowTitle());
+    insertIndex = index+1;
     if(m_manager->toolWindowProperties(toolWindow) & ToolWindowManager::HideCloseButton) {
       showCloseButton(tabBar(), index, false);
     }

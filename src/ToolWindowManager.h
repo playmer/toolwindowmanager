@@ -156,6 +156,7 @@ public:
     AreaReferenceType m_type;
     QWidget* m_widget;
     float m_percentage;
+    bool dragResult;
     QWidget* widget() const { return m_widget; }
     float percentage() const { return m_percentage; }
     AreaReference(AreaReferenceType type, QWidget* widget);
