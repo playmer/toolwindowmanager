@@ -121,18 +121,19 @@ void ToolWindowManagerTabBar::paintEvent(QPaintEvent *event) {
     buttonOpt.activeSubControls = 0;
     buttonOpt.features = QStyleOptionToolButton::None;
     buttonOpt.arrowType = Qt::NoArrow;
-    buttonOpt.state |= QStyle::State_AutoRaise;
+    buttonOpt.state = QStyle::State_Active|QStyle::State_Enabled|QStyle::State_AutoRaise;
 
     buttonOpt.rect = m_pin.rect;
     buttonOpt.icon = m_pin.icon;
 
     QStyle::State prevState = buttonOpt.state;
 
+    if(m_pin.clicked)
+      buttonOpt.state |= QStyle::State_Sunken;
+    else if(m_pin.hover)
+      buttonOpt.state |= QStyle::State_Raised | QStyle::State_MouseOver;
+
     if (style()->styleHint(QStyle::SH_DockWidget_ButtonsHaveFrame, 0, this)) {
-      if (m_pin.clicked)
-        buttonOpt.state |= QStyle::State_Sunken;
-      else if (m_pin.hover)
-        buttonOpt.state |= QStyle::State_Raised;
       style()->drawPrimitive(QStyle::PE_PanelButtonTool, &buttonOpt, &p, this);
     }
 
@@ -144,11 +145,12 @@ void ToolWindowManagerTabBar::paintEvent(QPaintEvent *event) {
 
       buttonOpt.state = prevState;
 
+      if(m_close.clicked)
+        buttonOpt.state |= QStyle::State_Sunken;
+      else if(m_close.hover)
+        buttonOpt.state |= QStyle::State_Raised | QStyle::State_MouseOver;
+
       if (style()->styleHint(QStyle::SH_DockWidget_ButtonsHaveFrame, 0, this)) {
-        if (m_close.clicked)
-          buttonOpt.state |= QStyle::State_Sunken;
-        else if (m_close.hover)
-          buttonOpt.state |= QStyle::State_Raised;
         style()->drawPrimitive(QStyle::PE_PanelButtonTool, &buttonOpt, &p, this);
       }
 
@@ -187,34 +189,27 @@ void ToolWindowManagerTabBar::mousePressEvent(QMouseEvent *event) {
   if (count() > 1 || floatingWindowChild())
     return;
 
-  bool doUpdate = false;
+  ButtonData prevPin = m_pin;
+  ButtonData prevClose = m_close;
 
   if (m_pin.rect.contains(mapFromGlobal(QCursor::pos())) &&
      event->buttons() & Qt::LeftButton) {
-    if (!m_pin.clicked)
-      doUpdate = true;
     m_pin.clicked = true;
   } else {
-    if (m_pin.clicked)
-      doUpdate = true;
     m_pin.clicked = false;
   }
 
   if (m_close.rect.contains(mapFromGlobal(QCursor::pos())) &&
      event->buttons() & Qt::LeftButton) {
-    if (!m_close.clicked)
-      doUpdate = true;
     m_close.clicked = true;
   } else {
-    if (m_close.clicked)
-      doUpdate = true;
     m_close.clicked = false;
   }
 
-  if (doUpdate) {
+  if (prevPin != m_pin || prevClose != m_close)
     update();
-    event->accept();
-  }
+
+  event->accept();
 }
 
 void ToolWindowManagerTabBar::mouseMoveEvent(QMouseEvent *event) {
@@ -223,35 +218,28 @@ void ToolWindowManagerTabBar::mouseMoveEvent(QMouseEvent *event) {
   if (count() > 1 || floatingWindowChild())
     return;
 
-  bool doUpdate = false;
+  ButtonData prevPin = m_pin;
+  ButtonData prevClose = m_close;
 
   if (m_pin.rect.contains(mapFromGlobal(QCursor::pos()))) {
-    if (!m_pin.hover)
-      doUpdate = true;
     m_pin.hover = true;
     if (event->buttons() & Qt::LeftButton)
       m_pin.clicked = true;
   } else {
-    if (m_pin.hover)
-      doUpdate = true;
     m_pin.hover = false;
     m_pin.clicked = false;
   }
 
   if (m_close.rect.contains(mapFromGlobal(QCursor::pos()))) {
-    if (!m_close.hover)
-      doUpdate = true;
     m_close.hover = true;
     if (event->buttons() & Qt::LeftButton)
       m_close.clicked = true;
   } else {
-    if (m_close.hover)
-      doUpdate = true;
     m_close.hover = false;
     m_close.clicked = false;
   }
 
-  if (doUpdate)
+  if (prevPin != m_pin || prevClose != m_close)
     update();
 }
 
@@ -263,12 +251,16 @@ void ToolWindowManagerTabBar::mouseReleaseEvent(QMouseEvent *event) {
 
   if (m_pin.rect.contains(mapFromGlobal(QCursor::pos()))) {
     // process a pin of these tabs
+
+    event->accept();
   }
 
   if (m_close.rect.contains(mapFromGlobal(QCursor::pos()))) {
     ToolWindowManagerArea *area = qobject_cast<ToolWindowManagerArea *>(parentWidget());
     if (area)
       area->tabCloseRequested(0);
+
+    event->accept();
   }
 }
 

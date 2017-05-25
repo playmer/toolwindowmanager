@@ -75,6 +75,15 @@ protected:
     QIcon icon;
     bool clicked;
     bool hover;
+
+    bool operator ==(const ButtonData &o) {
+      return rect == o.rect && clicked == o.clicked && hover == o.hover;
+    }
+
+    bool operator !=(const ButtonData &o) {
+      return !(*this == o);
+    }
+
   } m_close, m_pin;
 
   QRect m_titleRect;
