@@ -71,25 +71,28 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   m_previewOverlay = new QWidget(NULL);
   m_previewOverlay->setAutoFillBackground(true);
   m_previewOverlay->setPalette(pal);
-  m_previewOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+  m_previewOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint);
   m_previewOverlay->setWindowOpacity(0.3);
   m_previewOverlay->setAttribute(Qt::WA_ShowWithoutActivating);
+  m_previewOverlay->setAttribute(Qt::WA_AlwaysStackOnTop);
   m_previewOverlay->hide();
 
   m_previewTabOverlay = new QWidget(NULL);
   m_previewTabOverlay->setAutoFillBackground(true);
   m_previewTabOverlay->setPalette(pal);
-  m_previewTabOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+  m_previewTabOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint);
   m_previewTabOverlay->setWindowOpacity(0.3);
   m_previewTabOverlay->setAttribute(Qt::WA_ShowWithoutActivating);
+  m_previewTabOverlay->setAttribute(Qt::WA_AlwaysStackOnTop);
   m_previewTabOverlay->hide();
 
   m_dropHotspotsOverlay = new QWidget(NULL);
-  m_dropHotspotsOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+  m_dropHotspotsOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint);
   m_dropHotspotsOverlay->setAttribute(Qt::WA_NoSystemBackground);
   m_dropHotspotsOverlay->setAttribute(Qt::WA_TranslucentBackground);
   m_dropHotspotsOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
   m_dropHotspotsOverlay->setAttribute(Qt::WA_ShowWithoutActivating);
+  m_dropHotspotsOverlay->setAttribute(Qt::WA_AlwaysStackOnTop);
   m_dropHotspotsOverlay->hide();
 
   for (int i=0; i < NumReferenceTypes; i++)
