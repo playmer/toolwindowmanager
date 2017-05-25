@@ -661,6 +661,87 @@ void ToolWindowManager::updateDragPosition() {
         break;
       }
     }
+
+    // if we found a wrapper and it's not empty, then we fill into a gap between two areas in a
+    // splitter. Search down the hierarchy until we find a splitter whose handle intersects the
+    // cursor and pick an area to map to.
+    if (hoverWrapper) {
+      QSplitter* splitter = qobject_cast<QSplitter *>(hoverWrapper->layout()->itemAt(0)->widget());
+
+      while (splitter) {
+        QSplitter* previous = splitter;
+
+        for (int h=1; h < splitter->count(); h++) {
+          QSplitterHandle* handle = splitter->handle(h);
+
+          if (handle->rect().contains(handle->mapFromGlobal(pos))) {
+            QWidget* a = splitter->widget(h);
+            QWidget* b = splitter->widget(h+1);
+
+            // try the first widget, if it's an area stop
+            m_hoverArea = qobject_cast<ToolWindowManagerArea *>(a);
+            if (m_hoverArea)
+              break;
+
+            // then the second widget
+            m_hoverArea = qobject_cast<ToolWindowManagerArea *>(b);
+            if (m_hoverArea)
+              break;
+
+            // neither widget is an area - let's search for a splitter to recurse to
+            splitter = qobject_cast<QSplitter *>(a);
+            if (splitter)
+              break;
+
+            splitter = qobject_cast<QSplitter *>(b);
+            if (splitter)
+              break;
+
+            // neither side is an area or a splitter - should be impossible, but stop recursing
+            // and treat this like a floating window
+            qWarning("Couldn't find splitter or area at terminal side of splitter");
+            splitter = NULL;
+            hoverWrapper = NULL;
+            break;
+          }
+        }
+
+        // if we still have a splitter, and didn't find an area, find which widget contains the
+        // cursor and recurse to that splitter
+        if (previous == splitter && !m_hoverArea)
+        {
+          for (int w=0; w < splitter->count(); w++) {
+            QWidget* widget = splitter->widget(w);
+
+            if (widget->rect().contains(widget->mapFromGlobal(pos))) {
+              splitter = qobject_cast<QSplitter *>(widget);
+              if (splitter)
+                break;
+
+              // if this isn't a splitter, and it's not an area (since that would have been found
+              // before any of this started) then bail out
+              qWarning("cursor inside unknown child widget that isn't a splitter or area");
+              splitter = NULL;
+              hoverWrapper = NULL;
+              break;
+            }
+          }
+        }
+
+        // we found an area to use! stop now
+        if (m_hoverArea)
+          break;
+
+        // if we still haven't found anything, bail out
+        if (previous == splitter)
+        {
+          qWarning("Couldn't find cursor inside any child of wrapper");
+          splitter = NULL;
+          hoverWrapper = NULL;
+          break;
+        }
+      }
+    }
   }
 
   if (m_hoverArea || hoverWrapper) {
@@ -746,7 +827,6 @@ void ToolWindowManager::updateDragPosition() {
       (hotspot == AddTo ||
        hotspot == LeftOf || hotspot == RightOf ||
        hotspot == TopOf || hotspot == BottomOf)) {
-
     QWidget *parent = m_hoverArea;
     if(parent == NULL)
       parent = hoverWrapper;
