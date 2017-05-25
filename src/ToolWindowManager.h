@@ -104,7 +104,9 @@ public:
     //! New area to the top of the area specified in AreaReference argument.
     TopOf,
     //! New area to the bottom of the area specified in AreaReference argument.
-    BottomOf
+    BottomOf,
+    //! Invalid value, just indicates the number of types available
+    NumReferenceTypes
   };
 
   /*!
@@ -245,7 +247,10 @@ private:
   QList<QWidget*> m_draggedToolWindows;
   ToolWindowManagerWrapper* m_draggedWrapper; // the wrapper if a whole float window is being dragged
   ToolWindowManagerArea* m_hoverArea; // the area currently being hovered over in a drag
-  QWidget* m_overlay;
+  // a semi-transparent preview of where the dragged toolwindow(s) will be docked
+  QWidget* m_previewOverlay;
+  QWidget* m_dropHotspotsOverlay; // an overlay parent where we add drop hotspots.
+  QLabel* m_dropHotspots[NumReferenceTypes];
 
   bool m_allowFloatingWindow; // Allow floating windows from this docking area
 
@@ -262,12 +267,12 @@ private:
   QVariantMap saveSplitterState(QSplitter* splitter);
   QSplitter* restoreSplitterState(const QVariantMap& data);
 
+  AreaReferenceType currentHotspot();
+
   void updateDragPosition();
   void abortDrag();
   void finishDrag();
   bool dragInProgress() { return !m_draggedToolWindows.isEmpty(); }
-
-  QWidget* createDragOverlayWidget();
 
   friend class ToolWindowManagerArea;
   friend class ToolWindowManagerWrapper;

@@ -65,11 +65,57 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   m_draggedWrapper = NULL;
   m_hoverArea = NULL;
 
-  m_overlay = createDragOverlayWidget();
+  m_previewOverlay = new QWidget(NULL);
+
+  QPalette pal = palette();
+  pal.setColor(QPalette::Background, pal.color(QPalette::Highlight));
+  m_previewOverlay->setAutoFillBackground(true);
+  m_previewOverlay->setPalette(pal);
+  m_previewOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+  m_previewOverlay->setWindowOpacity(0.3);
+  m_previewOverlay->setAttribute(Qt::WA_ShowWithoutActivating);
+  m_previewOverlay->hide();
+
+  m_dropHotspotsOverlay = new QWidget(NULL);
+
+  m_dropHotspotsOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+  m_dropHotspotsOverlay->setAttribute(Qt::WA_NoSystemBackground);
+  m_dropHotspotsOverlay->setAttribute(Qt::WA_TranslucentBackground);
+  m_dropHotspotsOverlay->setAttribute(Qt::WA_TransparentForMouseEvents);
+  m_dropHotspotsOverlay->setAttribute(Qt::WA_ShowWithoutActivating);
+  m_dropHotspotsOverlay->hide();
+
+  for (int i=0; i < NumReferenceTypes; i++)
+    m_dropHotspots[i] = NULL;
+
+  // TODO make configurable
+  const int dropHotspotSize = 32;
+
+  // TODO generate proper pixmaps for these (and then allow them to be set externally).
+  m_dropHotspots[AddTo] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[AddTo]->setStyleSheet(QStringLiteral("background-color: #ff0000;"));
+  m_dropHotspots[AddTo]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[TopOf] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[TopOf]->setStyleSheet(QStringLiteral("background-color: #00ff00;"));
+  m_dropHotspots[TopOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[LeftOf] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[LeftOf]->setStyleSheet(QStringLiteral("background-color: #0000ff;"));
+  m_dropHotspots[LeftOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[RightOf] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[RightOf]->setStyleSheet(QStringLiteral("background-color: #ff00ff;"));
+  m_dropHotspots[RightOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[BottomOf] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[BottomOf]->setStyleSheet(QStringLiteral("background-color: #00ffff;"));
+  m_dropHotspots[BottomOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
 }
 
 ToolWindowManager::~ToolWindowManager() {
-  delete m_overlay;
+  delete m_previewOverlay;
+  delete m_dropHotspotsOverlay;
   while(!m_areas.isEmpty()) {
     delete m_areas.first();
   }
@@ -544,31 +590,91 @@ void ToolWindowManager::updateDragPosition() {
       continue;
     }
     if (area->rect().contains(area->mapFromGlobal(pos))) {
-      QRect g = area->geometry();
-      g.moveTopLeft(area->parentWidget()->mapToGlobal(g.topLeft()));
-      m_overlay->setGeometry(g);
       m_hoverArea = area;
       break;
     }
   }
-  if (m_hoverArea == NULL) {
+  if (m_hoverArea) {
+    m_dropHotspotsOverlay->setGeometry(m_hoverArea->window()->geometry());
+
+    QRect areaClientRect;
+
+    // calculate the rect of the area relative to m_dropHotspotsOverlay
+    areaClientRect.setTopLeft(m_hoverArea->mapToGlobal(QPoint(0,0)) - m_dropHotspotsOverlay->pos());
+    areaClientRect.setSize(m_hoverArea->rect().size());
+
+    // subtract the rect for the tab bar.
+    areaClientRect.adjust(0, m_hoverArea->tabBar()->rect().height(), 0, 0);
+
+    // TODO make configurable externally
+    const int margin = 4;
+
+    // TODO fetch this from the external configuration variable, not from the widget itself
+    int size = m_dropHotspots[AddTo]->size().width();
+    int hsize = size / 2;
+
+    QPoint c = areaClientRect.center();
+
+    m_dropHotspots[AddTo]->move(c + QPoint(-hsize, -hsize));
+    m_dropHotspots[AddTo]->show();
+
+    m_dropHotspots[TopOf]->move(c + QPoint(-hsize, -hsize-margin-size));
+    m_dropHotspots[TopOf]->show();
+
+    m_dropHotspots[LeftOf]->move(c + QPoint(-hsize-margin-size, -hsize));
+    m_dropHotspots[LeftOf]->show();
+
+    m_dropHotspots[RightOf]->move(c + QPoint( hsize+margin, -hsize));
+    m_dropHotspots[RightOf]->show();
+
+    m_dropHotspots[BottomOf]->move(c + QPoint(-hsize, hsize+margin));
+    m_dropHotspots[BottomOf]->show();
+
+    m_dropHotspotsOverlay->show();
+  } else {
+    m_dropHotspotsOverlay->hide();
+  }
+
+  AreaReferenceType hotspot = currentHotspot();
+  if (hotspot == AddTo ||
+      hotspot == LeftOf || hotspot == RightOf ||
+      hotspot == TopOf || hotspot == BottomOf) {
+    QRect g = m_hoverArea->geometry();
+    g.moveTopLeft(m_hoverArea->parentWidget()->mapToGlobal(g.topLeft()));
+
+    if(hotspot == LeftOf)
+      g.adjust(0, 0, -g.width()/2, 0);
+    else if(hotspot == RightOf)
+      g.adjust(g.width()/2, 0, 0, 0);
+    else if(hotspot == TopOf)
+      g.adjust(0, 0, 0, -g.height()/2);
+    else if(hotspot == BottomOf)
+      g.adjust(0, g.height()/2, 0, 0);
+
+    m_previewOverlay->setGeometry(g);
+  } else {
+    // no hotspot highlighted, draw geometry for a float window
     if (m_draggedWrapper) {
-      m_overlay->setGeometry(m_draggedWrapper->dragGeometry());
+      m_previewOverlay->setGeometry(m_draggedWrapper->dragGeometry());
     } else {
       QRect r;
       for (QWidget *w : m_draggedToolWindows)
         r = r.united(w->rect());
-      m_overlay->setGeometry(pos.x(), pos.y(), r.width(), r.height());
+      m_previewOverlay->setGeometry(pos.x(), pos.y(), r.width(), r.height());
     }
   }
-  m_overlay->show();
+
+  m_previewOverlay->show();
+  if (m_dropHotspotsOverlay->isVisible())
+    m_dropHotspotsOverlay->raise();
 }
 
 void ToolWindowManager::abortDrag() {
   if (!dragInProgress())
     return;
 
-  m_overlay->hide();
+  m_previewOverlay->hide();
+  m_dropHotspotsOverlay->hide();
   m_draggedToolWindows.clear();
   m_draggedWrapper = NULL;
   qApp->removeEventFilter(this);
@@ -580,8 +686,12 @@ void ToolWindowManager::finishDrag() {
     return;
   }
   qApp->removeEventFilter(this);
-  m_overlay->hide();
-  if (m_hoverArea == NULL) {
+  m_previewOverlay->hide();
+  m_dropHotspotsOverlay->hide();
+
+  AreaReferenceType hotspot = currentHotspot();
+
+  if (hotspot == NewFloatingArea) {
     // check if we're dragging a whole float window, if so we don't do anything except move it.
     if (m_draggedWrapper) {
       m_draggedWrapper->finishDragMove();
@@ -605,11 +715,25 @@ void ToolWindowManager::finishDrag() {
       }
     }
   } else {
-    ToolWindowManager::AreaReference dropTarget = AreaReference(AddTo, m_hoverArea);
-    moveToolWindows(m_draggedToolWindows, dropTarget);
+    moveToolWindows(m_draggedToolWindows, AreaReference(hotspot, m_hoverArea));
   }
 
   m_draggedToolWindows.clear();
+}
+
+ToolWindowManager::AreaReferenceType ToolWindowManager::currentHotspot() {
+  QPoint pos = m_dropHotspotsOverlay->mapFromGlobal(QCursor::pos());
+
+  if (m_hoverArea == NULL)
+    return NewFloatingArea;
+
+  for (int i=0; i < NumReferenceTypes; i++) {
+    if (m_dropHotspots[i] && m_dropHotspots[i]->geometry().contains(pos)) {
+      return (ToolWindowManager::AreaReferenceType)i;
+    }
+  }
+
+  return NewFloatingArea;
 }
 
 bool ToolWindowManager::eventFilter(QObject *object, QEvent *event) {
@@ -664,20 +788,6 @@ void ToolWindowManager::windowTitleChanged(const QString &) {
   if(area) {
     area->updateToolWindow(toolWindow);
   }
-}
-
-QWidget* ToolWindowManager::createDragOverlayWidget() {
-  QWidget *ret = new QWidget(NULL);
-
-  QPalette pal = palette();
-  pal.setColor(QPalette::Background, pal.color(QPalette::Highlight));
-  ret->setAutoFillBackground(true);
-  ret->setPalette(pal);
-  ret->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
-  ret->setWindowOpacity(0.3);
-  ret->setAttribute(Qt::WA_ShowWithoutActivating);
-  ret->hide();
-  return ret;
 }
 
 QSplitter *ToolWindowManager::createSplitter() {
