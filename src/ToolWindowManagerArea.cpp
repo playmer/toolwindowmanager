@@ -27,7 +27,6 @@
 #include "ToolWindowManager.h"
 #include <QApplication>
 #include <QMouseEvent>
-#include <QDebug>
 #include <algorithm>
 
 static void showCloseButton(QTabBar *bar, int index, bool show) {
@@ -106,6 +105,7 @@ void ToolWindowManagerArea::updateToolWindow(QWidget* toolWindow) {
 void ToolWindowManagerArea::mousePressEvent(QMouseEvent *) {
   if (qApp->mouseButtons() == Qt::LeftButton) {
     m_dragCanStart = true;
+    m_dragCanStartPos = QCursor::pos();
   }
 }
 
@@ -138,6 +138,7 @@ bool ToolWindowManagerArea::eventFilter(QObject *object, QEvent *event) {
         }
       } else if (m_tabBar == NULL || !m_tabBar->inButton(pos)) {
         m_dragCanStart = true;
+        m_dragCanStartPos = QCursor::pos();
       }
     } else if (event->type() == QEvent::MouseButtonPress &&
         qApp->mouseButtons() == Qt::MiddleButton) {
@@ -287,9 +288,8 @@ void ToolWindowManagerArea::restoreState(const QVariantMap &savedData) {
 
 void ToolWindowManagerArea::check_mouse_move() {
   m_manager->updateDragPosition();
-  if (qApp->mouseButtons() == Qt::LeftButton &&
-      !rect().contains(mapFromGlobal(QCursor::pos())) &&
-      m_dragCanStart) {
+  if (m_dragCanStart &&
+      (QCursor::pos() - m_dragCanStartPos).manhattanLength() > 10) {
     m_dragCanStart = false;
     QList<QWidget*> toolWindows;
     for(int i = 0; i < count(); i++) {
