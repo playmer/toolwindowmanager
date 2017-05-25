@@ -252,6 +252,10 @@ void ToolWindowManagerTabBar::mouseReleaseEvent(QMouseEvent *event) {
   if (m_pin.rect.contains(mapFromGlobal(QCursor::pos()))) {
     // process a pin of these tabs
 
+    m_pin.clicked = false;
+
+    update();
+
     event->accept();
   }
 
@@ -259,6 +263,10 @@ void ToolWindowManagerTabBar::mouseReleaseEvent(QMouseEvent *event) {
     ToolWindowManagerArea *area = qobject_cast<ToolWindowManagerArea *>(parentWidget());
     if (area)
       area->tabCloseRequested(0);
+
+    m_close.clicked = false;
+
+    update();
 
     event->accept();
   }
