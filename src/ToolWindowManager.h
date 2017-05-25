@@ -105,6 +105,14 @@ public:
     TopOf,
     //! New area to the bottom of the area specified in AreaReference argument.
     BottomOf,
+    //! New area to the left of the window containing the specified in AreaReference argument.
+    LeftWindowSide,
+    //! New area to the right of the window containing the specified in AreaReference argument.
+    RightWindowSide,
+    //! New area to the top of the window containing the specified in AreaReference argument.
+    TopWindowSide,
+    //! New area to the bottom of the window containing the specified in AreaReference argument.
+    BottomWindowSide,
     //! Invalid value, just indicates the number of types available
     NumReferenceTypes
   };

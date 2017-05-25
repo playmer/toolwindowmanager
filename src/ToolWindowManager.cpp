@@ -111,6 +111,22 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   m_dropHotspots[BottomOf] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[BottomOf]->setStyleSheet(QStringLiteral("background-color: #00ffff;"));
   m_dropHotspots[BottomOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[TopWindowSide] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[TopWindowSide]->setStyleSheet(QStringLiteral("background-color: #ffff00;"));
+  m_dropHotspots[TopWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[LeftWindowSide] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[LeftWindowSide]->setStyleSheet(QStringLiteral("background-color: #808080;"));
+  m_dropHotspots[LeftWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[RightWindowSide] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[RightWindowSide]->setStyleSheet(QStringLiteral("background-color: #000000;"));
+  m_dropHotspots[RightWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
+
+  m_dropHotspots[BottomWindowSide] = new QLabel(m_dropHotspotsOverlay);
+  m_dropHotspots[BottomWindowSide]->setStyleSheet(QStringLiteral("background-color: #dd6600;"));
+  m_dropHotspots[BottomWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
 }
 
 ToolWindowManager::~ToolWindowManager() {
@@ -197,6 +213,44 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
     wrapper->show();
   } else if (area.type() == AddTo) {
     area.area()->addToolWindows(toolWindows);
+  } else if (area.type() == LeftWindowSide || area.type() == RightWindowSide ||
+             area.type() == TopWindowSide || area.type() == BottomWindowSide) {
+    ToolWindowManagerWrapper* wrapper = findClosestParent<ToolWindowManagerWrapper*>(area.area());
+    if (!wrapper) {
+      qWarning("couldn't find wrapper");
+      return;
+    }
+
+    if (wrapper->layout()->count() > 1)
+    {
+      qWarning("wrapper has multiple direct children");
+      return;
+    }
+
+    QLayoutItem* item = wrapper->layout()->takeAt(0);
+
+    QSplitter* splitter = createSplitter();
+    if (area.type() == TopWindowSide || area.type() == BottomWindowSide) {
+      splitter->setOrientation(Qt::Vertical);
+    } else {
+      splitter->setOrientation(Qt::Horizontal);
+    }
+
+    splitter->addWidget(item->widget());
+    area.widget()->show();
+
+    delete item;
+
+    ToolWindowManagerArea* newArea = createArea();
+    newArea->addToolWindows(toolWindows);
+
+    if (area.type() == TopWindowSide || area.type() == LeftWindowSide) {
+      splitter->insertWidget(0, newArea);
+    } else {
+      splitter->addWidget(newArea);
+    }
+
+    wrapper->layout()->addWidget(splitter);
   } else if (area.type() == LeftOf || area.type() == RightOf ||
              area.type() == TopOf || area.type() == BottomOf) {
     QSplitter* parentSplitter = qobject_cast<QSplitter*>(area.widget()->parentWidget());
@@ -633,6 +687,22 @@ void ToolWindowManager::updateDragPosition() {
 
     m_dropHotspots[BottomOf]->move(c + QPoint(-hsize, hsize+margin));
     m_dropHotspots[BottomOf]->show();
+
+    QRect wrapperClientRect = m_dropHotspotsOverlay->rect();
+    c = wrapperClientRect.center();
+    QSize s = wrapperClientRect.size();
+
+    m_dropHotspots[TopWindowSide]->move(QPoint(c.x() - hsize, margin * 2));
+    m_dropHotspots[TopWindowSide]->show();
+
+    m_dropHotspots[LeftWindowSide]->move(QPoint(margin * 2, c.y() - hsize));
+    m_dropHotspots[LeftWindowSide]->show();
+
+    m_dropHotspots[RightWindowSide]->move(QPoint(s.width() - size - margin * 2, c.y() - hsize));
+    m_dropHotspots[RightWindowSide]->show();
+
+    m_dropHotspots[BottomWindowSide]->move(QPoint(c.x() - hsize, s.height() - size - margin * 2));
+    m_dropHotspots[BottomWindowSide]->show();
 
     m_dropHotspotsOverlay->show();
   } else {
