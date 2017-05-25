@@ -251,9 +251,9 @@ public:
   void setToolWindowCreateCallback(const CreateCallback &cb) { m_createCallback = cb; }
   QWidget *createToolWindow(const QString& objectName);
 
-  bool checkValidSplitter(QWidget *w);
+  void setHotspotPixmap(AreaReferenceType ref, const QPixmap &pix) { m_pixmaps[ref] = pix; }
 
-  void setDropHotspotMargin(int pixels) { m_dropHotspotMargin = pixels; }
+  void setDropHotspotMargin(int pixels);
   bool dropHotspotMargin() { return m_dropHotspotMargin; }
 
   void setDropHotspotDimension(int pixels);
@@ -285,12 +285,15 @@ private:
   QWidget* m_previewOverlay;
   QWidget* m_dropHotspotsOverlay; // an overlay parent where we add drop hotspots.
   QLabel* m_dropHotspots[NumReferenceTypes];
+  QPixmap m_pixmaps[NumReferenceTypes];
 
   bool m_allowFloatingWindow; // Allow floating windows from this docking area
   int m_dropHotspotMargin; // The pixels between drop hotspot icons
   int m_dropHotspotDimension; // The pixel dimension of the hotspot icons
 
   CreateCallback m_createCallback;
+
+  void drawHotspotPixmaps();
 
   // last widget used for adding tool windows, or 0 if there isn't one
   // (warning: may contain pointer to deleted object)
