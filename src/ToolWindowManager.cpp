@@ -666,9 +666,13 @@ void ToolWindowManager::windowTitleChanged(const QString &) {
 
 QWidget* ToolWindowManager::createDragOverlayWidget() {
   QWidget *ret = new QWidget(NULL);
-  ret->setStyleSheet(QStringLiteral("background-color: #0C266C;"));
-	ret->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
-	ret->setWindowOpacity(0.3);
+
+  QPalette pal = palette();
+  pal.setColor(QPalette::Background, pal.color(QPalette::Highlight));
+  ret->setAutoFillBackground(true);
+  ret->setPalette(pal);
+  ret->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+  ret->setWindowOpacity(0.3);
   ret->setAttribute(Qt::WA_ShowWithoutActivating);
   ret->hide();
   return ret;
