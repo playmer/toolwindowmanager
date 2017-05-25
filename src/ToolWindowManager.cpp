@@ -65,10 +65,10 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   m_draggedWrapper = NULL;
   m_hoverArea = NULL;
 
-  m_previewOverlay = new QWidget(NULL);
-
   QPalette pal = palette();
   pal.setColor(QPalette::Background, pal.color(QPalette::Highlight));
+
+  m_previewOverlay = new QWidget(NULL);
   m_previewOverlay->setAutoFillBackground(true);
   m_previewOverlay->setPalette(pal);
   m_previewOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
@@ -76,8 +76,15 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   m_previewOverlay->setAttribute(Qt::WA_ShowWithoutActivating);
   m_previewOverlay->hide();
 
-  m_dropHotspotsOverlay = new QWidget(NULL);
+  m_previewTabOverlay = new QWidget(NULL);
+  m_previewTabOverlay->setAutoFillBackground(true);
+  m_previewTabOverlay->setPalette(pal);
+  m_previewTabOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
+  m_previewTabOverlay->setWindowOpacity(0.3);
+  m_previewTabOverlay->setAttribute(Qt::WA_ShowWithoutActivating);
+  m_previewTabOverlay->hide();
 
+  m_dropHotspotsOverlay = new QWidget(NULL);
   m_dropHotspotsOverlay->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint);
   m_dropHotspotsOverlay->setAttribute(Qt::WA_NoSystemBackground);
   m_dropHotspotsOverlay->setAttribute(Qt::WA_TranslucentBackground);
@@ -106,6 +113,7 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
 
 ToolWindowManager::~ToolWindowManager() {
   delete m_previewOverlay;
+  delete m_previewTabOverlay;
   delete m_dropHotspotsOverlay;
   while(!m_areas.isEmpty()) {
     delete m_areas.first();
@@ -830,7 +838,26 @@ void ToolWindowManager::updateDragPosition() {
     else if(hotspot == BottomOf)
       g.adjust(0, g.height()/2, 0, 0);
 
+    QRect tabGeom;
+
+    if(hotspot == AddTo && m_hoverArea && m_hoverArea->count() > 1)
+    {
+      g.adjust(0, m_hoverArea->tabBar()->rect().height(), 0, 0);
+
+      tabGeom = m_hoverArea->tabBar()->tabRect(m_hoverArea->count()-1);
+      tabGeom.moveTo(m_hoverArea->tabBar()->mapToGlobal(QPoint(0,0)) + tabGeom.topLeft());
+
+      // move the tab one to the right, to indicate the tab is being added after the last one.
+      tabGeom.moveLeft(tabGeom.left() + tabGeom.width());
+
+      // clamp from the right, to ensure we don't display any tab off the end of the range
+      if(tabGeom.right() > g.right())
+        tabGeom.moveLeft(g.right() - tabGeom.width());
+    }
+
     m_previewOverlay->setGeometry(g);
+
+    m_previewTabOverlay->setGeometry(tabGeom);
   } else if((m_hoverArea || hoverWrapper) &&
             (hotspot == LeftWindowSide || hotspot == RightWindowSide ||
              hotspot == TopWindowSide || hotspot == BottomWindowSide)) {
@@ -852,6 +879,7 @@ void ToolWindowManager::updateDragPosition() {
       g.adjust(0, (g.height()*3)/4, 0, 0);
 
     m_previewOverlay->setGeometry(g);
+    m_previewTabOverlay->setGeometry(QRect());
   } else {
     // no hotspot highlighted, draw geometry for a float window
     if (m_draggedWrapper) {
@@ -862,9 +890,11 @@ void ToolWindowManager::updateDragPosition() {
         r = r.united(w->rect());
       m_previewOverlay->setGeometry(pos.x(), pos.y(), r.width(), r.height());
     }
+    m_previewTabOverlay->setGeometry(QRect());
   }
 
   m_previewOverlay->show();
+  m_previewTabOverlay->show();
   if (m_dropHotspotsOverlay->isVisible())
     m_dropHotspotsOverlay->raise();
 }
@@ -874,6 +904,7 @@ void ToolWindowManager::abortDrag() {
     return;
 
   m_previewOverlay->hide();
+  m_previewTabOverlay->hide();
   m_dropHotspotsOverlay->hide();
   m_draggedToolWindows.clear();
   m_draggedWrapper = NULL;
@@ -890,6 +921,7 @@ void ToolWindowManager::finishDrag() {
   AreaReferenceType hotspot = currentHotspot();
 
   m_previewOverlay->hide();
+  m_previewTabOverlay->hide();
   m_dropHotspotsOverlay->hide();
 
   if (hotspot == NewFloatingArea) {

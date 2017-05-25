@@ -283,6 +283,7 @@ private:
   ToolWindowManagerArea* m_hoverArea; // the area currently being hovered over in a drag
   // a semi-transparent preview of where the dragged toolwindow(s) will be docked
   QWidget* m_previewOverlay;
+  QWidget* m_previewTabOverlay;
   QWidget* m_dropHotspotsOverlay; // an overlay parent where we add drop hotspots.
   QLabel* m_dropHotspots[NumReferenceTypes];
   QPixmap m_pixmaps[NumReferenceTypes];
