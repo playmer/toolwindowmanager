@@ -59,6 +59,7 @@ ToolWindowManagerArea::ToolWindowManagerArea(ToolWindowManager *manager, QWidget
 
   QObject::connect(tabBar(), &QTabBar::tabMoved, this, &ToolWindowManagerArea::tabMoved);
   QObject::connect(tabBar(), &QTabBar::tabCloseRequested, this, &ToolWindowManagerArea::tabClosing);
+  QObject::connect(tabBar(), &QTabBar::tabCloseRequested, this, &QTabWidget::tabCloseRequested);
   QObject::connect(this, &QTabWidget::currentChanged, this, &ToolWindowManagerArea::tabSelected);
 }
 
