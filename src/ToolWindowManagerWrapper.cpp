@@ -42,6 +42,8 @@ ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, b
   m_dragReady = false;
   m_dragActive = false;
 
+  m_floating = floating;
+
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
   m_manager->m_wrappers << this;

@@ -290,7 +290,7 @@ bool ToolWindowManagerTabBar::floatingWindowChild() const {
   if (area) {
     ToolWindowManagerWrapper *wrapper = qobject_cast<ToolWindowManagerWrapper *>(area->parentWidget());
 
-    if (wrapper)
+    if (wrapper && wrapper->floating())
       return true;
   }
 

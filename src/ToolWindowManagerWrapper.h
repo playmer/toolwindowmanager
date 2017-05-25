@@ -51,6 +51,8 @@ public:
   void finishDragMove();
   QRect dragGeometry();
 
+  bool floating() { return m_floating; }
+
 protected:
   //! Reimplemented to register hiding of contained tool windows when user closes the floating window.
   virtual void closeEvent(QCloseEvent *);
@@ -62,6 +64,7 @@ private:
   ToolWindowManager* m_manager;
 
   QLabel* m_titlebar;
+  bool m_floating;
 
   bool m_dragReady; // we've clicked and started moving but haven't moved enough yet
   QPoint m_dragStartCursor, m_dragStartPos; // cursor and window pos at the click to start a drag
