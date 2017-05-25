@@ -88,45 +88,45 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) :
   for (int i=0; i < NumReferenceTypes; i++)
     m_dropHotspots[i] = NULL;
 
-  // TODO make configurable
-  const int dropHotspotSize = 32;
+  m_dropHotspotDimension = 32;
+  m_dropHotspotMargin = 4;
 
   // TODO generate proper pixmaps for these (and then allow them to be set externally).
   m_dropHotspots[AddTo] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[AddTo]->setStyleSheet(QStringLiteral("background-color: #ff0000;"));
-  m_dropHotspots[AddTo]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[AddTo]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[TopOf] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[TopOf]->setStyleSheet(QStringLiteral("background-color: #00ff00;"));
-  m_dropHotspots[TopOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[TopOf]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[LeftOf] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[LeftOf]->setStyleSheet(QStringLiteral("background-color: #0000ff;"));
-  m_dropHotspots[LeftOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[LeftOf]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[RightOf] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[RightOf]->setStyleSheet(QStringLiteral("background-color: #ff00ff;"));
-  m_dropHotspots[RightOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[RightOf]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[BottomOf] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[BottomOf]->setStyleSheet(QStringLiteral("background-color: #00ffff;"));
-  m_dropHotspots[BottomOf]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[BottomOf]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[TopWindowSide] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[TopWindowSide]->setStyleSheet(QStringLiteral("background-color: #ffff00;"));
-  m_dropHotspots[TopWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[TopWindowSide]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[LeftWindowSide] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[LeftWindowSide]->setStyleSheet(QStringLiteral("background-color: #808080;"));
-  m_dropHotspots[LeftWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[LeftWindowSide]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[RightWindowSide] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[RightWindowSide]->setStyleSheet(QStringLiteral("background-color: #000000;"));
-  m_dropHotspots[RightWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[RightWindowSide]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 
   m_dropHotspots[BottomWindowSide] = new QLabel(m_dropHotspotsOverlay);
   m_dropHotspots[BottomWindowSide]->setStyleSheet(QStringLiteral("background-color: #dd6600;"));
-  m_dropHotspots[BottomWindowSide]->setFixedSize(dropHotspotSize, dropHotspotSize);
+  m_dropHotspots[BottomWindowSide]->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
 }
 
 ToolWindowManager::~ToolWindowManager() {
@@ -429,6 +429,15 @@ QWidget* ToolWindowManager::createToolWindow(const QString& objectName)
   }
 
   return NULL;
+}
+
+void ToolWindowManager::setDropHotspotDimension(int pixels) {
+  m_dropHotspotDimension = pixels;
+
+  for (QLabel *hotspot : m_dropHotspots) {
+    if(hotspot)
+      hotspot->setFixedSize(m_dropHotspotDimension, m_dropHotspotDimension);
+  }
 }
 
 void ToolWindowManager::setAllowFloatingWindow(bool allow) {
@@ -753,12 +762,10 @@ void ToolWindowManager::updateDragPosition() {
     wrapperGeometry.moveTo(wrapper->mapToGlobal(QPoint(0,0)));
     m_dropHotspotsOverlay->setGeometry(wrapperGeometry);
 
-    // TODO make configurable externally
-    const int margin = 4;
+    const int margin = m_dropHotspotMargin;
 
-    // TODO fetch this from the external configuration variable, not from the widget itself
-    int size = m_dropHotspots[AddTo]->size().width();
-    int hsize = size / 2;
+    const int size = m_dropHotspotDimension;
+    const int hsize = size / 2;
 
     if (m_hoverArea) {
       QRect areaClientRect;

@@ -60,6 +60,26 @@ class ToolWindowManager : public QWidget {
    */
   Q_PROPERTY(int allowFloatingWindow READ allowFloatingWindow WRITE setAllowFloatingWindow)
 
+  /*!
+   * \brief How much of a margin should be placed between drop hotspots.
+   *
+   * Default value is 4.
+   *
+   * Access functions: dropHotspotMargin, setDropHotspotMargin.
+   *
+   */
+  Q_PROPERTY(int dropHotspotMargin READ dropHotspotMargin WRITE setDropHotspotMargin)
+
+  /*!
+   * \brief How wide and heigh each drop hotspot icon should be drawn at, in pixels.
+   *
+   * Default value is 32.
+   *
+   * Access functions: dropHotspotDimension, setDropHotspotDimension.
+   *
+   */
+  Q_PROPERTY(int dropHotspotDimension READ dropHotspotDimension WRITE setDropHotspotDimension)
+
 public:
   /*!
    * \brief Creates a manager with given \a parent.
@@ -233,6 +253,12 @@ public:
 
   bool checkValidSplitter(QWidget *w);
 
+  void setDropHotspotMargin(int pixels) { m_dropHotspotMargin = pixels; }
+  bool dropHotspotMargin() { return m_dropHotspotMargin; }
+
+  void setDropHotspotDimension(int pixels);
+  bool dropHotspotDimension() { return m_dropHotspotDimension; }
+
   /*! \cond PRIVATE */
   void setAllowFloatingWindow(bool pixels);
   bool allowFloatingWindow() { return m_allowFloatingWindow; }
@@ -261,6 +287,8 @@ private:
   QLabel* m_dropHotspots[NumReferenceTypes];
 
   bool m_allowFloatingWindow; // Allow floating windows from this docking area
+  int m_dropHotspotMargin; // The pixels between drop hotspot icons
+  int m_dropHotspotDimension; // The pixel dimension of the hotspot icons
 
   CreateCallback m_createCallback;
 
