@@ -764,6 +764,27 @@ void ToolWindowManager::updateDragPosition() {
       g.adjust(0, g.height()/2, 0, 0);
 
     m_previewOverlay->setGeometry(g);
+  } else if((m_hoverArea || hoverWrapper) &&
+            (hotspot == LeftWindowSide || hotspot == RightWindowSide ||
+             hotspot == TopWindowSide || hotspot == BottomWindowSide)) {
+    ToolWindowManagerWrapper* wrapper = hoverWrapper;
+    if (m_hoverArea)
+      wrapper = findClosestParent<ToolWindowManagerWrapper*>(m_hoverArea);
+
+    QRect g;
+    g.moveTopLeft(wrapper->mapToGlobal(QPoint()));
+    g.setSize(wrapper->rect().size());
+
+    if(hotspot == LeftWindowSide)
+      g.adjust(0, 0, -(g.width()*5)/6, 0);
+    else if(hotspot == RightWindowSide)
+      g.adjust((g.width()*5)/6, 0, 0, 0);
+    else if(hotspot == TopWindowSide)
+      g.adjust(0, 0, 0, -(g.height()*3)/4);
+    else if(hotspot == BottomWindowSide)
+      g.adjust(0, (g.height()*3)/4, 0, 0);
+
+    m_previewOverlay->setGeometry(g);
   } else {
     // no hotspot highlighted, draw geometry for a float window
     if (m_draggedWrapper) {
