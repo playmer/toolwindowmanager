@@ -116,7 +116,6 @@ bool ToolWindowManagerWrapper::eventFilter(QObject *object, QEvent *event) {
   };
 
   if (object == this) {
-    qInfo() << event;
     if (event->type() == QEvent::MouseButtonRelease ||
         event->type() == QEvent::NonClientAreaMouseButtonRelease) {
       m_dragReady = false;
