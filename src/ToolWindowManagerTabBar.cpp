@@ -72,9 +72,11 @@ QSize ToolWindowManagerTabBar::sizeHint() const {
       return QSize(0, 0);
 
     QFontMetrics fm = fontMetrics();
+
+    int iconSize = style()->pixelMetric(QStyle::PM_SmallIconSize, 0, this);
     int mw = style()->pixelMetric(QStyle::PM_DockWidgetTitleMargin, 0, this);
 
-    int h = fm.height() + 2*mw;
+    int h = qMax(fm.height(), iconSize) + 2*mw;
 
     return QSize(h, h);
   }
