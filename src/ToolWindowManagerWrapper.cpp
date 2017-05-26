@@ -378,6 +378,9 @@ ToolWindowManagerWrapper::ResizeDirection ToolWindowManagerWrapper::checkResize(
   QRect rect = this->rect();
   QPoint testPos = mapFromGlobal(QCursor::pos());
 
+  if (m_closeRect.contains(testPos))
+    return ResizeDirection::Count;
+
   const int resizeMargin = 4;
 
   if (rect.contains(testPos)) {
