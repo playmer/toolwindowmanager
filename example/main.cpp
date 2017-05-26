@@ -28,8 +28,8 @@
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
-  a.setOrganizationName("ToolWindowManagerTest");
-  a.setApplicationName("ToolWindowManagerTest");
+  a.setOrganizationName(QStringLiteral("ToolWindowManagerTest"));
+  a.setApplicationName(QStringLiteral("ToolWindowManagerTest"));
   MainWindow* w = new MainWindow();
   w->show();
 
