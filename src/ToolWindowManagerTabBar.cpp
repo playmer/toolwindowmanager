@@ -37,6 +37,12 @@ ToolWindowManagerTabBar::ToolWindowManagerTabBar(QWidget *parent) :
 
   setMouseTracking(true);
 
+  // Workaround for extremely dodgy KDE behaviour - by default the KDE theme will install event
+  // filters on various widgets such as QTabBar and any descendents, and if a click is detected on
+  // them that isn't on a tab it will immediately start moving the window, interfering with our own
+  // click-to-drag behaviour.
+  setProperty("_kde_no_window_grab", true);
+
   QStyleOptionToolButton buttonOpt;
 
   int size = style()->pixelMetric(QStyle::PM_SmallIconSize, 0, this);
