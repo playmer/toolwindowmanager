@@ -917,8 +917,10 @@ void ToolWindowManager::updateDragPosition() {
       m_previewOverlay->setGeometry(QRect());
     } else {
       QRect r;
-      for (QWidget *w : m_draggedToolWindows)
-        r = r.united(w->rect());
+      for (QWidget *w : m_draggedToolWindows) {
+        if (w->isVisible())
+          r = r.united(w->rect());
+      }
       m_previewOverlay->setGeometry(pos.x(), pos.y(), r.width(), r.height());
     }
     m_previewTabOverlay->setGeometry(QRect());
@@ -973,8 +975,10 @@ void ToolWindowManager::finishDrag() {
       if (m_allowFloatingWindow)
       {
         QRect r;
-        for(QWidget *w : draggedToolWindows)
-          r = r.united(w->rect());
+        for (QWidget *w : draggedToolWindows) {
+          if (w->isVisible())
+            r = r.united(w->rect());
+        }
 
         moveToolWindows(draggedToolWindows, NewFloatingArea);
 
