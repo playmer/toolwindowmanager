@@ -31,38 +31,64 @@
 #include <QDebug>
 #include <QApplication>
 #include <QSplitter>
+#include <QTimer>
+#include <QStylePainter>
+#include <QStyleOption>
 
 ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, bool floating) :
-  QFrame(manager)
+  QWidget(manager)
 , m_manager(manager)
 {
-  setWindowFlags(windowFlags() | Qt::Tool | Qt::FramelessWindowHint);
+  Qt::WindowFlags flags = Qt::Tool;
+
+#if defined(Q_OS_WIN32)
+  flags |= Qt::CustomizeWindowHint | Qt::WindowTitleHint | Qt::WindowCloseButtonHint;
+#else
+  flags |= Qt::FramelessWindowHint;
+#endif
+
+  setMouseTracking(true);
+
+  setWindowFlags(flags);
   setWindowTitle(QStringLiteral(" "));
 
   m_dragReady = false;
   m_dragActive = false;
+  m_dragDirection = ResizeDirection::Count;
 
   m_floating = floating;
 
   QVBoxLayout* mainLayout = new QVBoxLayout(this);
   mainLayout->setContentsMargins(0, 0, 0, 0);
+  mainLayout->setMargin(0);
+  mainLayout->setSpacing(0);
   m_manager->m_wrappers << this;
 
-  m_titlebar = NULL;
+  m_moveTimeout = new QTimer(this);
+  m_moveTimeout->setInterval(100);
+  m_moveTimeout->stop();
+  QObject::connect(m_moveTimeout, &QTimer::timeout, this, &ToolWindowManagerWrapper::moveTimeout);
 
-  if (floating) {
-    setFrameStyle(QFrame::StyledPanel | QFrame::Raised);
-    m_titlebar = new QLabel(QStringLiteral(" "), this);
-    m_titlebar->setStyleSheet(QStringLiteral("background-color: #0C266C; color: #ffffff; padding: 2px;"));
-    m_titlebar->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-    mainLayout->addWidget(m_titlebar);
-    mainLayout->setMargin(0);
-    mainLayout->setSpacing(0);
-    mainLayout->setContentsMargins(QMargins(0, 0, 0, 0));
+  m_closeButtonSize = 0;
+  m_frameWidth = 0;
+  m_titleHeight = 0;
 
-    installEventFilter(this);
-    m_titlebar->installEventFilter(this);
+  if (floating && (flags & Qt::FramelessWindowHint)) {
+    m_closeButtonSize = style()->pixelMetric(QStyle::PM_SmallIconSize, 0, this);
+
+    QFontMetrics titleFontMetrics = fontMetrics();
+    int mw = style()->pixelMetric(QStyle::PM_DockWidgetTitleMargin, 0, this);
+
+    m_titleHeight = qMax(m_closeButtonSize + 2, titleFontMetrics.height() + 2*mw);
+
+    m_frameWidth = style()->pixelMetric(QStyle::PM_DockWidgetFrameWidth, 0, this);
+
+    mainLayout->setContentsMargins(QMargins(m_frameWidth+4, m_frameWidth+4 + m_titleHeight,
+                                            m_frameWidth+4, m_frameWidth+4));
   }
+
+  if (floating)
+    installEventFilter(this);
 }
 
 ToolWindowManagerWrapper::~ToolWindowManagerWrapper() {
@@ -77,22 +103,35 @@ void ToolWindowManagerWrapper::closeEvent(QCloseEvent *) {
   m_manager->moveToolWindows(toolWindows, ToolWindowManager::NoArea);
 }
 
-void ToolWindowManagerWrapper::finishDragMove() {
-  move(m_dragStartPos - m_dragStartCursor + QCursor::pos());
-}
-
-QRect ToolWindowManagerWrapper::dragGeometry() {
-  return QRect(m_dragStartPos - m_dragStartCursor + QCursor::pos(), size());
-}
-
 bool ToolWindowManagerWrapper::eventFilter(QObject *object, QEvent *event) {
+  const Qt::CursorShape shapes[(int)ResizeDirection::Count] = {
+    Qt::SizeFDiagCursor,
+    Qt::SizeBDiagCursor,
+    Qt::SizeBDiagCursor,
+    Qt::SizeFDiagCursor,
+    Qt::SizeVerCursor,
+    Qt::SizeHorCursor,
+    Qt::SizeVerCursor,
+    Qt::SizeHorCursor,
+  };
+
   if (object == this) {
-    if (event->type() == QEvent::MouseButtonRelease) {
-      // if the mouse button is released, let the manager finish the drag and don't call any more
-      // updates for any further move events
-      m_dragActive = false;
-      m_manager->updateDragPosition();
-    } else if (event->type() == QEvent::MouseMove) {
+    qInfo() << event;
+    if (event->type() == QEvent::MouseButtonRelease ||
+        event->type() == QEvent::NonClientAreaMouseButtonRelease) {
+      m_dragReady = false;
+      m_dragDirection = ResizeDirection::Count;
+      if (!m_dragActive && m_closeRect.contains(mapFromGlobal(QCursor::pos()))) {
+        // catch clicks on the close button
+        close();
+      } else {
+        // if the mouse button is released, let the manager finish the drag and don't call any more
+        // updates for any further move events
+        m_dragActive = false;
+        m_manager->updateDragPosition();
+      }
+    } else if (event->type() == QEvent::MouseMove ||
+               event->type() == QEvent::NonClientAreaMouseMove) {
       // if we're ready to start a drag, check how far we've moved and start the drag if past a
       // certain pixel threshold.
       if (m_dragReady) {
@@ -109,17 +148,178 @@ bool ToolWindowManagerWrapper::eventFilter(QObject *object, QEvent *event) {
       // if the drag is active, update it in the manager.
       if (m_dragActive) {
         m_manager->updateDragPosition();
+
+        // on non-windows we have no native title bar, so we need to move the window ourselves
+#if !defined(Q_OS_WIN32)
+        move(QCursor::pos() - (m_dragStartCursor - m_dragStartGeometry.topLeft()));
+#endif
+      }
+      if (titleRect().contains(mapFromGlobal(QCursor::pos()))) {
+        // if we're in the title bar, repaint to pick up motion over the close button
+        update();
+      }
+      
+      ResizeDirection dir = checkResize();
+
+      if (m_dragDirection != ResizeDirection::Count) {
+        dir = m_dragDirection;
+
+        QRect g = geometry();
+
+        switch (dir) {
+          case ResizeDirection::NW:
+            g.setTopLeft(QCursor::pos());
+            break;
+          case ResizeDirection::NE:
+            g.setTopRight(QCursor::pos());
+            break;
+          case ResizeDirection::SW:
+            g.setBottomLeft(QCursor::pos());
+            break;
+          case ResizeDirection::SE:
+            g.setBottomRight(QCursor::pos());
+            break;
+          case ResizeDirection::N:
+            g.setTop(QCursor::pos().y());
+            break;
+          case ResizeDirection::E:
+            g.setRight(QCursor::pos().x());
+            break;
+          case ResizeDirection::S:
+            g.setBottom(QCursor::pos().y());
+            break;
+          case ResizeDirection::W:
+            g.setLeft(QCursor::pos().x());
+            break;
+          case ResizeDirection::Count:
+            break;
+        }
+
+        setGeometry(g);
+      }
+
+      if (dir != ResizeDirection::Count) {
+        setCursor(shapes[(int)dir]);
+        
+        QObjectList children = this->children();
+        for (int i = 0; i < children.size(); ++i) {
+          if (QWidget *w = qobject_cast<QWidget*>(children.at(i))) {
+            if (!w->testAttribute(Qt::WA_SetCursor)) {
+              w->setCursor(Qt::ArrowCursor);
+            }
+          }
+        }
+      } else {
+        unsetCursor();
+      }
+
+    } else if (event->type() == QEvent::MouseButtonPress) {
+      ResizeDirection dir = checkResize();
+      m_dragStartCursor = QCursor::pos();
+      m_dragStartGeometry = geometry();
+      if (dir == ResizeDirection::Count)
+        m_dragReady = true;
+      else
+        m_dragDirection = dir;
+    } else if (event->type() == QEvent::NonClientAreaMouseButtonPress) {
+      m_dragActive = true;
+      m_dragReady = false;
+      m_dragStartCursor = QCursor::pos();
+      m_dragStartGeometry = geometry();
+      QList<QWidget*> toolWindows;
+      foreach(ToolWindowManagerArea* tabWidget, findChildren<ToolWindowManagerArea*>()) {
+        toolWindows << tabWidget->toolWindows();
+      }
+      m_manager->startDrag(toolWindows, this);
+    } else if (event->type() == QEvent::Move && m_dragActive) {
+      m_manager->updateDragPosition();
+      m_moveTimeout->start();
+    } else if (event->type() == QEvent::Leave) {
+      unsetCursor();
+    } else if (event->type() == QEvent::MouseButtonDblClick &&
+               titleRect().contains(mapFromGlobal(QCursor::pos()))) {
+      if (isMaximized()) {
+        showNormal();
+      } else {
+        showMaximized();
       }
     }
-  } else if (object == m_titlebar) {
-    // if we get a click on the titlebar, indicate that a drag is possible once we've moved a bit.
-    if(event->type() == QEvent::MouseButtonPress) {
-      m_dragReady = true;
-      m_dragStartCursor = QCursor::pos();
-      m_dragStartPos = pos();
-    }
   }
-  return QFrame::eventFilter(object, event);
+  return QWidget::eventFilter(object, event);
+}
+
+void ToolWindowManagerWrapper::paintEvent(QPaintEvent *) {
+  if (!m_floating || m_titleHeight == 0)
+    return;
+
+  {
+    QStylePainter p(this);
+
+    QStyleOptionFrame frameOptions;
+    frameOptions.init(this);
+    p.drawPrimitive(QStyle::PE_FrameDockWidget, frameOptions);
+
+    // Title must be painted after the frame, since the areas overlap, and
+    // the title may wish to extend out to all sides (eg. XP style)
+    QStyleOptionDockWidget titlebarOptions;
+
+    titlebarOptions.initFrom(this);
+    titlebarOptions.rect = titleRect();
+    titlebarOptions.title = QStringLiteral("Tool Window");
+    titlebarOptions.closable = true;
+    titlebarOptions.movable = true;
+    titlebarOptions.floatable = false;
+    titlebarOptions.verticalTitleBar = false;
+
+    p.drawControl(QStyle::CE_DockWidgetTitle, titlebarOptions);
+    
+    QStyleOptionToolButton buttonOpt;
+
+    buttonOpt.initFrom(this);
+    buttonOpt.iconSize = QSize(m_closeButtonSize, m_closeButtonSize);
+    buttonOpt.subControls = 0;
+    buttonOpt.activeSubControls = 0;
+    buttonOpt.features = QStyleOptionToolButton::None;
+    buttonOpt.arrowType = Qt::NoArrow;
+    buttonOpt.state = QStyle::State_Active|QStyle::State_Enabled|QStyle::State_AutoRaise;
+
+    if (m_closeRect.contains(mapFromGlobal(QCursor::pos()))) {
+      buttonOpt.state |= QStyle::State_MouseOver|QStyle::State_Raised;
+    }
+
+    buttonOpt.rect = m_closeRect;
+    buttonOpt.icon = m_closeIcon;
+
+    if (style()->styleHint(QStyle::SH_DockWidget_ButtonsHaveFrame, 0, this)) {
+      style()->drawPrimitive(QStyle::PE_PanelButtonTool, &buttonOpt, &p, this);
+    }
+
+    style()->drawComplexControl(QStyle::CC_ToolButton, &buttonOpt, &p, this);
+  }
+}
+
+void ToolWindowManagerWrapper::resizeEvent(QResizeEvent *)
+{
+  QStyleOptionDockWidget option;
+
+  option.initFrom(this);
+  option.rect = titleRect();
+  option.closable = true;
+  option.movable = true;
+  option.floatable = true;
+
+  m_closeRect = style()->subElementRect(QStyle::SE_DockWidgetCloseButton, &option, this);
+  m_closeIcon = style()->standardIcon(QStyle::SP_TitleBarCloseButton, &option, this);
+}
+
+QRect ToolWindowManagerWrapper::titleRect()
+{
+  QRect ret;
+
+  ret.setTopLeft(QPoint(m_frameWidth, m_frameWidth));
+  ret.setSize(QSize(geometry().width() - (m_frameWidth * 2), m_titleHeight));
+
+  return ret;
 }
 
 QVariantMap ToolWindowManagerWrapper::saveState() {
@@ -161,4 +361,46 @@ void ToolWindowManagerWrapper::restoreState(const QVariantMap &savedData) {
     area->restoreState(savedData[QStringLiteral("area")].toMap());
     layout()->addWidget(area);
   }
+}
+
+void ToolWindowManagerWrapper::moveTimeout() {
+  m_manager->updateDragPosition();
+
+  if (!m_manager->dragInProgress()) {
+    m_moveTimeout->stop();
+  }
+}
+
+ToolWindowManagerWrapper::ResizeDirection ToolWindowManagerWrapper::checkResize() {
+  if (m_titleHeight == 0)
+    return ResizeDirection::Count;
+
+  // check if we should offer to resize
+  QRect rect = this->rect();
+  QPoint testPos = mapFromGlobal(QCursor::pos());
+
+  const int resizeMargin = 4;
+
+  if (rect.contains(testPos)) {
+    // check corners first, then horizontal/vertical
+    if (testPos.x() < rect.x() + resizeMargin*4 && testPos.y() < rect.y() + resizeMargin*4) {
+      return ResizeDirection::NW;
+    } else if (testPos.x() > rect.width() - resizeMargin*4 && testPos.y() < rect.y() + resizeMargin*4) {
+      return ResizeDirection::NE;
+    } else if (testPos.x() < rect.x() + resizeMargin*4 && testPos.y() > rect.height() - resizeMargin*4) {
+      return ResizeDirection::SW;
+    } else if (testPos.x() > rect.width() - resizeMargin*4 && testPos.y() > rect.height() - resizeMargin*4) {
+      return ResizeDirection::SE;
+    } else if (testPos.x() < rect.x() + resizeMargin) {
+      return ResizeDirection::W;
+    } else if (testPos.x() > rect.width() - resizeMargin) {
+      return ResizeDirection::E;
+    } else if (testPos.y() < rect.y() + resizeMargin) {
+      return ResizeDirection::N;
+    } else if (testPos.y() > rect.height() - resizeMargin) {
+      return ResizeDirection::S;
+    }
+  }
+
+  return ResizeDirection::Count;
 }

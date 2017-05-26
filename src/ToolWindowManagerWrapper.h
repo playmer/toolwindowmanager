@@ -25,7 +25,8 @@
 #ifndef TOOLWINDOWMANAGERWRAPPER_H
 #define TOOLWINDOWMANAGERWRAPPER_H
 
-#include <QFrame>
+#include <QIcon>
+#include <QWidget>
 #include <QVariantMap>
 
 class ToolWindowManager;
@@ -37,7 +38,7 @@ class QLabel;
  * All other wrappers are top level floating windows that contain detached tool windows.
  *
  */
-class ToolWindowManagerWrapper : public QFrame {
+class ToolWindowManagerWrapper : public QWidget {
   Q_OBJECT
 public:
   //! Creates new wrapper.
@@ -46,10 +47,6 @@ public:
   virtual ~ToolWindowManagerWrapper();
 
   ToolWindowManager* manager() { return m_manager; }
-
-  //finish a drag by just moving the window (if nothing was dragged from one wrapper/area to another)
-  void finishDragMove();
-  QRect dragGeometry();
 
   bool floating() { return m_floating; }
 
@@ -60,15 +57,42 @@ protected:
   //! Event filter for grabbing and processing mouse drags as toolwindow drags.
   virtual bool eventFilter(QObject *object, QEvent *event);
 
+  //! Painting and resizing for custom-rendered widget frames
+  virtual void paintEvent(QPaintEvent *) Q_DECL_OVERRIDE;
+  virtual void resizeEvent(QResizeEvent *) Q_DECL_OVERRIDE;
+
 private:
   ToolWindowManager* m_manager;
 
-  QLabel* m_titlebar;
+  enum class ResizeDirection {
+    NW,
+    NE,
+    SW,
+    SE,
+    N,
+    E,
+    S,
+    W,
+    Count,
+  };
+
+  QRect titleRect();
+  ResizeDirection checkResize();
+
+  QRect m_closeRect;
+  QIcon m_closeIcon;
+  int m_closeButtonSize;
+  int m_titleHeight;
+  int m_frameWidth;
   bool m_floating;
 
+  QTimer* m_moveTimeout;
+
   bool m_dragReady; // we've clicked and started moving but haven't moved enough yet
-  QPoint m_dragStartCursor, m_dragStartPos; // cursor and window pos at the click to start a drag
+  QPoint m_dragStartCursor; // cursor at the click to start a drag
+  QRect m_dragStartGeometry; // window geometry at the click to start a drag
   bool m_dragActive; // whether a drag currently on-going
+  ResizeDirection m_dragDirection; // the current direction being dragged
 
   //dump content's layout to variable
   QVariantMap saveState();
@@ -78,6 +102,8 @@ private:
 
   friend class ToolWindowManager;
 
+private slots:
+  void moveTimeout();
 };
 
 #endif // TOOLWINDOWMANAGERWRAPPER_H

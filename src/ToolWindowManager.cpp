@@ -895,9 +895,10 @@ void ToolWindowManager::updateDragPosition() {
     m_previewOverlay->setGeometry(g);
     m_previewTabOverlay->setGeometry(QRect());
   } else {
-    // no hotspot highlighted, draw geometry for a float window
+    // no hotspot highlighted, draw geometry for a float window if previewing a tear-off, or draw
+    // nothing if we're dragging a float window as it moves itself.
     if (m_draggedWrapper) {
-      m_previewOverlay->setGeometry(m_draggedWrapper->dragGeometry());
+      m_previewOverlay->setGeometry(QRect());
     } else {
       QRect r;
       for (QWidget *w : m_draggedToolWindows)
@@ -932,6 +933,13 @@ void ToolWindowManager::finishDrag() {
   }
   qApp->removeEventFilter(this);
 
+  // move these locally to prevent re-entrancy
+  QList<QWidget *> draggedToolWindows = m_draggedToolWindows;
+  ToolWindowManagerWrapper* draggedWrapper = m_draggedWrapper;
+
+  m_draggedToolWindows.clear();
+  m_draggedWrapper = NULL;
+
   AreaReferenceType hotspot = currentHotspot();
 
   m_previewOverlay->hide();
@@ -939,24 +947,22 @@ void ToolWindowManager::finishDrag() {
   m_dropHotspotsOverlay->hide();
 
   if (hotspot == NewFloatingArea) {
-    // check if we're dragging a whole float window, if so we don't do anything except move it.
-    if (m_draggedWrapper) {
-      m_draggedWrapper->finishDragMove();
-    } else {
+    // check if we're dragging a whole float window, if so we don't do anything as it's already moved
+    if (!draggedWrapper) {
       bool allowFloat = m_allowFloatingWindow;
 
-      for (QWidget *w : m_draggedToolWindows)
+      for (QWidget *w : draggedToolWindows)
         allowFloat &= !(toolWindowProperties(w) & DisallowFloatWindow);
 
       if (m_allowFloatingWindow)
       {
         QRect r;
-        for(QWidget *w : m_draggedToolWindows)
+        for(QWidget *w : draggedToolWindows)
           r = r.united(w->rect());
 
-        moveToolWindows(m_draggedToolWindows, NewFloatingArea);
+        moveToolWindows(draggedToolWindows, NewFloatingArea);
 
-        ToolWindowManagerArea *area = areaOf(m_draggedToolWindows[0]);
+        ToolWindowManagerArea *area = areaOf(draggedToolWindows[0]);
 
         area->parentWidget()->resize(r.size());
       }
@@ -965,13 +971,11 @@ void ToolWindowManager::finishDrag() {
     if (m_hoverArea) {
       AreaReference ref(hotspot, m_hoverArea);
       ref.dragResult = true;
-      moveToolWindows(m_draggedToolWindows, ref);
+      moveToolWindows(draggedToolWindows, ref);
     } else {
-      moveToolWindows(m_draggedToolWindows, AreaReference(EmptySpace));
+      moveToolWindows(draggedToolWindows, AreaReference(EmptySpace));
     }
   }
-
-  m_draggedToolWindows.clear();
 }
 
 void ToolWindowManager::drawHotspotPixmaps() {
