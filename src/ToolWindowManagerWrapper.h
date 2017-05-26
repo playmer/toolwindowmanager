@@ -54,10 +54,10 @@ public:
 
 protected:
   //! Reimplemented to register hiding of contained tool windows when user closes the floating window.
-  virtual void closeEvent(QCloseEvent *);
+  virtual void closeEvent(QCloseEvent *) Q_DECL_OVERRIDE;
 
   //! Event filter for grabbing and processing mouse drags as toolwindow drags.
-  virtual bool eventFilter(QObject *object, QEvent *event);
+  virtual bool eventFilter(QObject *object, QEvent *event) Q_DECL_OVERRIDE;
 
   //! Painting and resizing for custom-rendered widget frames
   virtual void paintEvent(QPaintEvent *) Q_DECL_OVERRIDE;
