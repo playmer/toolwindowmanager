@@ -260,14 +260,10 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
     }
     bool useParentSplitter = false;
     int indexInParentSplitter = 0;
-    QList<QRect> parentSplitterGeometries;
     QList<int> parentSplitterSizes;
     if (parentSplitter) {
       indexInParentSplitter = parentSplitter->indexOf(area.widget());
       parentSplitterSizes = parentSplitter->sizes();
-      for(int i = 0; i < parentSplitter->count(); i++) {
-        parentSplitterGeometries.push_back(parentSplitter->widget(i)->geometry());
-      }
       if (parentSplitter->orientation() == Qt::Vertical) {
         useParentSplitter = area.type() == TopOf || area.type() == BottomOf;
       } else {
@@ -275,15 +271,19 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
       }
     }
     if (useParentSplitter) {
+      int insertIndex = indexInParentSplitter;
       if (area.type() == BottomOf || area.type() == RightOf) {
-        indexInParentSplitter++;
+        insertIndex++;
       }
       ToolWindowManagerArea* newArea = createArea();
       newArea->addToolWindows(toolWindows);
-      parentSplitter->insertWidget(indexInParentSplitter, newArea);
+      parentSplitter->insertWidget(insertIndex, newArea);
 
-      for(int i = 0; i < qMin(parentSplitter->count(), parentSplitterGeometries.count()); i++) {
-        parentSplitter->widget(i)->setGeometry(parentSplitterGeometries[i]);
+      if(parentSplitterSizes.count() > indexInParentSplitter && parentSplitterSizes[0] != 0) {
+        parentSplitterSizes[indexInParentSplitter] /= 2;
+        parentSplitterSizes.insert(indexInParentSplitter, parentSplitterSizes[indexInParentSplitter]);
+
+        parentSplitter->setSizes(parentSplitterSizes);
       }
     } else {
       area.widget()->hide();
@@ -317,18 +317,8 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
         indexInSplitter = 1;
       }
 
-      // Convert area percentage desired to a stretch factor.
-      const int totalStretch = 100;
-      int pct = int(totalStretch*area.percentage());
-      splitter->setStretchFactor(indexInSplitter, pct);
-      splitter->setStretchFactor(1-indexInSplitter, totalStretch-pct);
-
       if (parentSplitter) {
         parentSplitter->insertWidget(indexInParentSplitter, splitter);
-
-        for (int i = 0; i < qMin(parentSplitter->count(), parentSplitterGeometries.count()); i++) {
-          parentSplitter->widget(i)->setGeometry(parentSplitterGeometries[i]);
-        }
 
         if (parentSplitterSizes.count() > 0 && parentSplitterSizes[0] != 0) {
           parentSplitter->setSizes(parentSplitterSizes);
@@ -342,6 +332,12 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
 
       area.widget()->setGeometry(areaGeometry);
       newArea->setGeometry(newGeometry);
+
+      // Convert area percentage desired to relative sizes.
+      const int totalStretch = 100;
+      int pct = int(totalStretch*area.percentage());
+
+      splitter->setSizes({pct, totalStretch-pct});
     }
   } else if (area.type() == EmptySpace) {
     ToolWindowManagerArea* newArea = createArea();
