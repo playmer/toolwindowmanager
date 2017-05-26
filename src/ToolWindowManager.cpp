@@ -164,20 +164,28 @@ ToolWindowManagerArea *ToolWindowManager::areaOf(QWidget *toolWindow) {
   return findClosestParent<ToolWindowManagerArea*>(toolWindow);
 }
 
+ToolWindowManagerWrapper *ToolWindowManager::wrapperOf(QWidget *toolWindow) {
+  return findClosestParent<ToolWindowManagerWrapper*>(toolWindow);
+}
+
 void ToolWindowManager::moveToolWindow(QWidget *toolWindow, AreaReference area) {
   moveToolWindows(QList<QWidget*>() << toolWindow, area);
 }
 
 void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
                                         ToolWindowManager::AreaReference area) {
+  QList<ToolWindowManagerWrapper*> wrappersToUpdate;
   foreach(QWidget* toolWindow, toolWindows) {
     if (!m_toolWindows.contains(toolWindow)) {
       qWarning("unknown tool window");
       return;
     }
+    ToolWindowManagerWrapper *oldWrapper = wrapperOf(toolWindow);
     if (toolWindow->parentWidget() != 0) {
       releaseToolWindow(toolWindow);
     }
+    if (oldWrapper && !wrappersToUpdate.contains(oldWrapper))
+      wrappersToUpdate.push_back(oldWrapper);
   }
   if (area.type() == LastUsedArea && !m_lastUsedArea) {
     ToolWindowManagerArea* foundArea = findChild<ToolWindowManagerArea*>();
@@ -196,6 +204,7 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
     ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this, true);
     wrapper->layout()->addWidget(floatArea);
     wrapper->move(QCursor::pos());
+    wrapper->updateTitle();
     wrapper->show();
   } else if (area.type() == AddTo) {
     int idx = -1;
@@ -346,6 +355,12 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
   simplifyLayout();
   foreach(QWidget* toolWindow, toolWindows) {
     emit toolWindowVisibilityChanged(toolWindow, toolWindow->parent() != 0);
+    ToolWindowManagerWrapper* wrapper = wrapperOf(toolWindow);
+    if (wrapper && !wrappersToUpdate.contains(wrapper))
+      wrappersToUpdate.push_back(wrapper);
+  }
+  foreach(ToolWindowManagerWrapper* wrapper, wrappersToUpdate) {
+    wrapper->updateTitle();
   }
 }
 
@@ -474,6 +489,7 @@ void ToolWindowManager::restoreState(const QVariantMap &dataMap) {
   foreach(QVariant windowData, floatWins) {
     ToolWindowManagerWrapper* wrapper = new ToolWindowManagerWrapper(this, true);
     wrapper->restoreState(windowData.toMap());
+    wrapper->updateTitle();
     wrapper->show();
     if(wrapper->windowState() && Qt::WindowMaximized)
     {

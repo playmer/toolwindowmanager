@@ -295,6 +295,8 @@ private:
 
   CreateCallback m_createCallback;
 
+  ToolWindowManagerWrapper* wrapperOf(QWidget* toolWindow);
+
   void drawHotspotPixmaps();
 
   // last widget used for adding tool windows, or 0 if there isn't one

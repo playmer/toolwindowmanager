@@ -24,6 +24,7 @@
  */
 #include "ToolWindowManagerArea.h"
 #include "ToolWindowManagerTabBar.h"
+#include "ToolWindowManagerWrapper.h"
 #include "ToolWindowManager.h"
 #include <QApplication>
 #include <QMouseEvent>
@@ -223,6 +224,10 @@ void ToolWindowManagerArea::tabSelected(int index) {
     m_tabSelectOrder.removeOne(index);
     m_tabSelectOrder.append(index);
   }
+
+  ToolWindowManagerWrapper* wrapper = m_manager->wrapperOf(this);
+  if (wrapper)
+    wrapper->updateTitle();
 }
 
 void ToolWindowManagerArea::tabClosing(int index) {

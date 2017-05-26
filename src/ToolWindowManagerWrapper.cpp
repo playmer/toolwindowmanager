@@ -87,12 +87,65 @@ ToolWindowManagerWrapper::ToolWindowManagerWrapper(ToolWindowManager *manager, b
                                             m_frameWidth+4, m_frameWidth+4));
   }
 
-  if (floating)
+  if (floating) {
     installEventFilter(this);
+    updateTitle();
+  }
 }
 
 ToolWindowManagerWrapper::~ToolWindowManagerWrapper() {
   m_manager->m_wrappers.removeOne(this);
+}
+
+void ToolWindowManagerWrapper::updateTitle() {
+  if (!m_floating)
+    return;
+
+  // find the best candidate for a 'title' for this floating window.
+  if (layout()->count() > 0) {
+    QWidget *child = layout()->itemAt(0)->widget();
+
+    while (child) {
+      // if we've found an area, use its currently selected tab's text
+      if (ToolWindowManagerArea* area = qobject_cast<ToolWindowManagerArea*>(child)) {
+        setWindowTitle(area->tabText(area->currentIndex()));
+        return;
+      }
+      // otherwise we should have a splitter
+      if (QSplitter* splitter = qobject_cast<QSplitter*>(child)) {
+        // if it's empty, just bail
+        if (splitter->count() == 0)
+          break;
+
+        // if it's vertical, we pick the first child and recurse
+        if (splitter->orientation() == Qt::Vertical) {
+          child = splitter->widget(0);
+          continue;
+        }
+
+        // if it's horizontal there's ambiguity so we just pick the biggest one by size, with a
+        // tie-break for the leftmost one
+        QList<int> sizes = splitter->sizes();
+        int maxIdx = 0;
+        int maxSize = sizes[0];
+        for (int i=1; i < sizes.count(); i++) {
+          if (sizes[i] > maxSize) {
+            maxSize = sizes[i];
+            maxIdx = i;
+          }
+        }
+
+        child = splitter->widget(maxIdx);
+        continue;
+      }
+
+      // if not, use this object's window title
+      setWindowTitle(child->windowTitle());
+      return;
+    }
+  }
+
+  setWindowTitle(QStringLiteral("Tool Window"));
 }
 
 void ToolWindowManagerWrapper::closeEvent(QCloseEvent *) {
@@ -264,7 +317,7 @@ void ToolWindowManagerWrapper::paintEvent(QPaintEvent *) {
 
     titlebarOptions.initFrom(this);
     titlebarOptions.rect = titleRect();
-    titlebarOptions.title = QStringLiteral("Tool Window");
+    titlebarOptions.title = windowTitle();
     titlebarOptions.closable = true;
     titlebarOptions.movable = true;
     titlebarOptions.floatable = false;

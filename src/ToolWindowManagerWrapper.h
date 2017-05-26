@@ -50,6 +50,8 @@ public:
 
   bool floating() { return m_floating; }
 
+  void updateTitle();
+
 protected:
   //! Reimplemented to register hiding of contained tool windows when user closes the floating window.
   virtual void closeEvent(QCloseEvent *);
