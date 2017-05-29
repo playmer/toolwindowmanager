@@ -104,18 +104,6 @@ void ToolWindowManagerArea::updateToolWindow(QWidget* toolWindow) {
   }
 }
 
-void ToolWindowManagerArea::mousePressEvent(QMouseEvent *) {
-  if (qApp->mouseButtons() == Qt::LeftButton) {
-    m_dragCanStart = true;
-    m_dragCanStartPos = QCursor::pos();
-  }
-}
-
-void ToolWindowManagerArea::mouseReleaseEvent(QMouseEvent *) {
-  m_dragCanStart = false;
-  m_manager->updateDragPosition();
-}
-
 void ToolWindowManagerArea::mouseMoveEvent(QMouseEvent *) {
   check_mouse_move();
 }
