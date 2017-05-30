@@ -103,6 +103,8 @@ public:
     HideOnClose = 0x8,
     //! Don't allow this tool window to be floated
     DisallowFloatWindow = 0x10,
+    //! When displaying this tool window in tabs, always display the tabs even if there's only one
+    AlwaysDisplayFullTabs = 0x20,
   };
 
   //! Type of AreaReference.
