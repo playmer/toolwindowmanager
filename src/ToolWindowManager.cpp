@@ -925,9 +925,9 @@ void ToolWindowManager::updateDragPosition() {
 
   m_previewOverlay->show();
   m_previewTabOverlay->show();
-  for(QWidget *hotspot : m_dropHotspots)
-    if(hotspot && hotspot->isVisible())
-      hotspot->raise();
+  for(QWidget *h : m_dropHotspots)
+    if(h && h->isVisible())
+      h->raise();
 }
 
 void ToolWindowManager::abortDrag() {
@@ -962,9 +962,9 @@ void ToolWindowManager::finishDrag() {
 
   m_previewOverlay->hide();
   m_previewTabOverlay->hide();
-  for(QWidget *hotspot : m_dropHotspots)
-    if(hotspot)
-      hotspot->hide();
+  for(QWidget *h : m_dropHotspots)
+    if(h)
+      h->hide();
 
   if (hotspot == NewFloatingArea) {
     // check if we're dragging a whole float window, if so we don't do anything as it's already moved
