@@ -307,14 +307,10 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
       splitter->addWidget(area.widget());
       area.widget()->show();
 
-      int indexInSplitter = 0;
-
       if (area.type() == TopOf || area.type() == LeftOf) {
         splitter->insertWidget(0, newArea);
-        indexInSplitter = 0;
       } else {
         splitter->addWidget(newArea);
-        indexInSplitter = 1;
       }
 
       if (parentSplitter) {
