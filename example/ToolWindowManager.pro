@@ -21,12 +21,14 @@ SOURCES += main.cpp\
   MainWindow.cpp \
   ../src/ToolWindowManager.cpp \
     ../src/ToolWindowManagerArea.cpp \
+    ../src/ToolWindowManagerSplitter.cpp \
     ../src/ToolWindowManagerTabBar.cpp \
     ../src/ToolWindowManagerWrapper.cpp
 
 HEADERS  += MainWindow.h \
   ../src/ToolWindowManager.h \
     ../src/ToolWindowManagerArea.h \
+    ../src/ToolWindowManagerSplitter.h \
     ../src/ToolWindowManagerTabBar.h \
     ../src/ToolWindowManagerWrapper.h
 

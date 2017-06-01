@@ -2,6 +2,7 @@ project(toolwindowmanager)
 set(SOURCES 
 ToolWindowManager.cpp
 ToolWindowManagerArea.cpp
+ToolWindowManagerSplitter.cpp
 ToolWindowManagerTabBar.cpp
 ToolWindowManagerWrapper.cpp
 )
@@ -9,6 +10,7 @@ ToolWindowManagerWrapper.cpp
 set(HEADERS
 ToolWindowManager.h
 ToolWindowManagerArea.h
+ToolWindowManagerSplitter.h
 ToolWindowManagerTabBar.h
 ToolWindowManagerWrapper.h
 )

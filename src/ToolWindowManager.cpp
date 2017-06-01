@@ -24,6 +24,7 @@
  */
 #include "ToolWindowManager.h"
 #include "ToolWindowManagerArea.h"
+#include "ToolWindowManagerSplitter.h"
 #include "ToolWindowManagerWrapper.h"
 #include <QVBoxLayout>
 #include <QDebug>
@@ -1165,7 +1166,7 @@ void ToolWindowManager::windowTitleChanged(const QString &) {
 }
 
 QSplitter *ToolWindowManager::createSplitter() {
-  QSplitter* splitter = new QSplitter();
+  QSplitter* splitter = new ToolWindowManagerSplitter();
   splitter->setChildrenCollapsible(false);
   return splitter;
 }
