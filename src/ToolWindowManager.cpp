@@ -908,9 +908,15 @@ void ToolWindowManager::updateDragPosition() {
     m_previewOverlay->setGeometry(g);
     m_previewTabOverlay->setGeometry(QRect());
   } else {
+    bool allowFloat = m_allowFloatingWindow;
+
+    for (QWidget *w : m_draggedToolWindows)
+      allowFloat &= !(toolWindowProperties(w) & DisallowFloatWindow);
+
     // no hotspot highlighted, draw geometry for a float window if previewing a tear-off, or draw
     // nothing if we're dragging a float window as it moves itself.
-    if (m_draggedWrapper) {
+    // we also don't render any preview tear-off when floating windows are disallowed
+    if (m_draggedWrapper || !allowFloat) {
       m_previewOverlay->setGeometry(QRect());
     } else {
       QRect r;
@@ -974,7 +980,7 @@ void ToolWindowManager::finishDrag() {
       for (QWidget *w : draggedToolWindows)
         allowFloat &= !(toolWindowProperties(w) & DisallowFloatWindow);
 
-      if (m_allowFloatingWindow)
+      if (allowFloat)
       {
         QRect r;
         for (QWidget *w : draggedToolWindows) {
