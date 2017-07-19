@@ -304,6 +304,16 @@ void ToolWindowManagerTabBar::mouseMoveEvent(QMouseEvent *event) {
     update();
 }
 
+void ToolWindowManagerTabBar::leaveEvent(QEvent *) {
+  m_pin.hover = false;
+  m_pin.clicked = false;
+
+  m_close.hover = false;
+  m_close.clicked = false;
+
+  update();
+}
+
 void ToolWindowManagerTabBar::mouseReleaseEvent(QMouseEvent *event) {
   QTabBar::mouseReleaseEvent(event);
 
