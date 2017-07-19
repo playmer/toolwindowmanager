@@ -180,11 +180,7 @@ void ToolWindowManagerTabBar::paintEvent(QPaintEvent *event) {
       else if(m_close.hover)
         buttonOpt.state |= QStyle::State_Raised | QStyle::State_MouseOver;
 
-      if (style()->styleHint(QStyle::SH_DockWidget_ButtonsHaveFrame, 0, this)) {
-        style()->drawPrimitive(QStyle::PE_PanelButtonTool, &buttonOpt, &p, this);
-      }
-
-      style()->drawComplexControl(QStyle::CC_ToolButton, &buttonOpt, &p, this);
+      style()->drawPrimitive(QStyle::PE_IndicatorTabClose, &buttonOpt, &p, this);
     }
     return;
   }
