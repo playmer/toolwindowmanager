@@ -23,6 +23,7 @@ install:
   - git diff --exit-code
 
 script:
+  - . /opt/qt56/bin/qt56-env.sh
   - cd example
   - qmake QMAKE_CXX=g++-6 QMAKE_CXXFLAGS=-std=c++11 .
   - make -j2
