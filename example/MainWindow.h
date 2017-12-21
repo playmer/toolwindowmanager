@@ -27,11 +27,13 @@
 
 #include <QMainWindow>
 
-namespace Ui {
+namespace Ui
+{
 class MainWindow;
 }
 
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
   Q_OBJECT
 
 public:
@@ -40,14 +42,14 @@ public:
 
 private:
   Ui::MainWindow *ui;
-  QList<QAction*> actions;
+  QList<QAction *> actions;
 
 private slots:
   void toolWindowActionToggled(bool state);
-  void toolWindowVisibilityChanged(QWidget* toolWindow, bool visible);
+  void toolWindowVisibilityChanged(QWidget *toolWindow, bool visible);
   void on_actionSaveState_triggered();
   void on_actionRestoreState_triggered();
   void on_actionClearState_triggered();
 };
 
-#endif // MAINWINDOW_H
+#endif    // MAINWINDOW_H

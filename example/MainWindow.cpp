@@ -23,26 +23,25 @@
  *
  */
 #include "MainWindow.h"
-#include "ui_MainWindow.h"
-#include <QTextEdit>
 #include <QPushButton>
 #include <QSettings>
+#include <QTextEdit>
+#include "ui_MainWindow.h"
 
-MainWindow::MainWindow(QWidget *parent) :
-  QMainWindow(parent),
-  ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
   ui->setupUi(this);
   setAttribute(Qt::WA_DeleteOnClose);
-  connect(ui->toolWindowManager, SIGNAL(toolWindowVisibilityChanged(QWidget*,bool)),
-          this, SLOT(toolWindowVisibilityChanged(QWidget*,bool)));
+  connect(ui->toolWindowManager, SIGNAL(toolWindowVisibilityChanged(QWidget *, bool)), this,
+          SLOT(toolWindowVisibilityChanged(QWidget *, bool)));
 
-  QList<QPushButton*> toolWindows;
-  for(int i = 0; i < 6; i++) {
-    QPushButton* b1 = new QPushButton(QStringLiteral("tool%1").arg(i + 1));
+  QList<QPushButton *> toolWindows;
+  for(int i = 0; i < 6; i++)
+  {
+    QPushButton *b1 = new QPushButton(QStringLiteral("tool%1").arg(i + 1));
     b1->setWindowTitle(b1->text());
     b1->setObjectName(b1->text());
-    QAction* action = ui->menuToolWindows->addAction(b1->text());
+    QAction *action = ui->menuToolWindows->addAction(b1->text());
     action->setData(i);
     action->setCheckable(true);
     action->setChecked(true);
@@ -53,51 +52,56 @@ MainWindow::MainWindow(QWidget *parent) :
   ui->toolWindowManager->addToolWindow(toolWindows[0], ToolWindowManager::EmptySpace);
   ui->toolWindowManager->addToolWindow(toolWindows[1], ToolWindowManager::LastUsedArea);
   ui->toolWindowManager->addToolWindow(toolWindows[2], ToolWindowManager::LastUsedArea);
-  ui->toolWindowManager->addToolWindow(toolWindows[3],
-      ToolWindowManager::AreaReference(ToolWindowManager::LeftOf,
-                                       ui->toolWindowManager->areaOf(toolWindows[2])));
+  ui->toolWindowManager->addToolWindow(
+      toolWindows[3], ToolWindowManager::AreaReference(
+                          ToolWindowManager::LeftOf, ui->toolWindowManager->areaOf(toolWindows[2])));
   ui->toolWindowManager->addToolWindow(toolWindows[4], ToolWindowManager::LastUsedArea);
-  ui->toolWindowManager->addToolWindow(toolWindows[5],
-      ToolWindowManager::AreaReference(ToolWindowManager::TopOf,
-                                       ui->toolWindowManager->areaOf(toolWindows[4])));
+  ui->toolWindowManager->addToolWindow(
+      toolWindows[5], ToolWindowManager::AreaReference(
+                          ToolWindowManager::TopOf, ui->toolWindowManager->areaOf(toolWindows[4])));
 
   resize(600, 400);
   on_actionRestoreState_triggered();
 }
 
-MainWindow::~MainWindow() {
+MainWindow::~MainWindow()
+{
   delete ui;
 }
 
-void MainWindow::toolWindowActionToggled(bool state) {
-  int index = static_cast<QAction*>(sender())->data().toInt();
-  QWidget* toolWindow = ui->toolWindowManager->toolWindows()[index];
-  ui->toolWindowManager->moveToolWindow(toolWindow, state ?
-                                          ToolWindowManager::LastUsedArea :
-                                          ToolWindowManager::NoArea);
-
+void MainWindow::toolWindowActionToggled(bool state)
+{
+  int index = static_cast<QAction *>(sender())->data().toInt();
+  QWidget *toolWindow = ui->toolWindowManager->toolWindows()[index];
+  ui->toolWindowManager->moveToolWindow(
+      toolWindow, state ? ToolWindowManager::LastUsedArea : ToolWindowManager::NoArea);
 }
 
-void MainWindow::toolWindowVisibilityChanged(QWidget *toolWindow, bool visible) {
+void MainWindow::toolWindowVisibilityChanged(QWidget *toolWindow, bool visible)
+{
   int index = ui->toolWindowManager->toolWindows().indexOf(toolWindow);
   actions[index]->blockSignals(true);
   actions[index]->setChecked(visible);
   actions[index]->blockSignals(false);
 }
 
-void MainWindow::on_actionSaveState_triggered() {
+void MainWindow::on_actionSaveState_triggered()
+{
   QSettings settings;
   settings.setValue(QStringLiteral("toolWindowManagerState"), ui->toolWindowManager->saveState());
   settings.setValue(QStringLiteral("geometry"), saveGeometry());
 }
 
-void MainWindow::on_actionRestoreState_triggered() {
+void MainWindow::on_actionRestoreState_triggered()
+{
   QSettings settings;
   restoreGeometry(settings.value(QStringLiteral("geometry")).toByteArray());
-  ui->toolWindowManager->restoreState(settings.value(QStringLiteral("toolWindowManagerState")).toMap());
+  ui->toolWindowManager->restoreState(
+      settings.value(QStringLiteral("toolWindowManagerState")).toMap());
 }
 
-void MainWindow::on_actionClearState_triggered() {
+void MainWindow::on_actionClearState_triggered()
+{
   QSettings settings;
   settings.remove(QStringLiteral("geometry"));
   settings.remove(QStringLiteral("toolWindowManagerState"));

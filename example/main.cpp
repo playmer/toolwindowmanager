@@ -22,15 +22,15 @@
  * SOFTWARE.
  *
  */
-#include "MainWindow.h"
 #include <QApplication>
+#include "MainWindow.h"
 
 int main(int argc, char *argv[])
 {
   QApplication a(argc, argv);
   a.setOrganizationName(QStringLiteral("ToolWindowManagerTest"));
   a.setApplicationName(QStringLiteral("ToolWindowManagerTest"));
-  MainWindow* w = new MainWindow();
+  MainWindow *w = new MainWindow();
   w->show();
 
   return a.exec();
