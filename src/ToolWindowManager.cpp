@@ -290,6 +290,22 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
     }
 
     wrapper->layout()->addWidget(splitter);
+
+    QRect areaGeometry = area.widget()->geometry();
+
+    // Convert area percentage desired to relative sizes.
+    const int totalStretch = (area.type() == TopWindowSide || area.type() == BottomWindowSide)
+                                 ? areaGeometry.height()
+                                 : areaGeometry.width();
+    int pct = int(totalStretch * area.percentage());
+
+    int a = pct;
+    int b = totalStretch - pct;
+
+    if(area.type() == BottomWindowSide || area.type() == RightWindowSide)
+      std::swap(a, b);
+
+    splitter->setSizes({a, b});
   }
   else if(area.type() == LeftOf || area.type() == RightOf || area.type() == TopOf ||
           area.type() == BottomOf)
