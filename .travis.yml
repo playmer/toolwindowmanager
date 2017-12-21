@@ -6,8 +6,8 @@ branches:
   only:
     - renderdoc
 
-- os: linux
-- compiler: gcc
+os: linux
+compiler: gcc
 
 # install dependencies and check clang-format
 install:
