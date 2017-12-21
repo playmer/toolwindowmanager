@@ -1,0 +1,27 @@
+language: cpp
+sudo: required
+dist: trusty
+
+branches:
+  only:
+    - renderdoc
+
+- os: linux
+- compiler: gcc
+
+# install dependencies and check clang-format
+install:
+  - sudo add-apt-repository -y 'ppa:beineri/opt-qt562-trusty'
+  - sudo add-apt-repository -y 'deb http://apt.llvm.org/precise/ llvm-toolchain-precise-3.8 main'
+  - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+  - sudo apt-get update -qq
+  - sudo apt-get install --allow-unauthenticated -y -qq qt56base clang-format-3.8
+  - clang-format-3.8 -i -style=file $(find src/ example/ -type f -regex '.*\.\(cpp\|h\)$' -print)
+  - git clean -f
+  - git diff --quiet || echo "Please ensure code is formatted with clang-format-3.8 specifically"
+  - git diff --exit-code
+
+script:
+  - cd example
+  - qmake .
+  - make -j2
