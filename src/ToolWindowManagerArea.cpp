@@ -37,7 +37,10 @@ static void showCloseButton(QTabBar *bar, int index, bool show)
     button = bar->tabButton(index, QTabBar::LeftSide);
 
   if(button)
-    button->resize(show ? QSize(16, 16) : QSize(0, 0));
+  {
+    button->resize(show ? QSize(16, 16) : QSize(1, 1));
+    button->setVisible(show);
+  }
 }
 
 ToolWindowManagerArea::ToolWindowManagerArea(ToolWindowManager *manager, QWidget *parent)
