@@ -768,12 +768,11 @@ void ToolWindowManager::simplifyLayout()
 
         QWidget *child = splitter->widget(0);
 
-        QWidget *removed = parentSplitter->replaceWidget(idx, child);
+        parentSplitter->insertWidget(idx, child);
         child->show();
 
-        if(removed != splitter)
-          qCritical() << "Expected to remove splitter!";
-
+        splitter->setParent(NULL);
+        splitter->hide();
         splitter->deleteLater();
       }
 
