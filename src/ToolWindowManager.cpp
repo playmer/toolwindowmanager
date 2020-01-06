@@ -227,9 +227,9 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
   }
   else if(area.type() == NewFloatingArea)
   {
-    ToolWindowManagerArea *floatArea = createArea();
-    floatArea->addToolWindows(toolWindows);
     ToolWindowManagerWrapper *wrapper = new ToolWindowManagerWrapper(this, true);
+    ToolWindowManagerArea *floatArea = createArea(wrapper);
+    floatArea->addToolWindows(toolWindows);
     wrapper->layout()->addWidget(floatArea);
     wrapper->move(QCursor::pos());
     wrapper->updateTitle();
@@ -277,7 +277,7 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
 
     delete item;
 
-    ToolWindowManagerArea *newArea = createArea();
+    ToolWindowManagerArea *newArea = createArea(splitter);
     newArea->addToolWindows(toolWindows);
 
     if(area.type() == TopWindowSide || area.type() == LeftWindowSide)
@@ -341,7 +341,7 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
       {
         insertIndex++;
       }
-      ToolWindowManagerArea *newArea = createArea();
+      ToolWindowManagerArea *newArea = createArea(parentSplitter);
       newArea->addToolWindows(toolWindows);
       parentSplitter->insertWidget(insertIndex, newArea);
 
@@ -369,7 +369,7 @@ void ToolWindowManager::moveToolWindows(QList<QWidget *> toolWindows,
         splitter->setOrientation(Qt::Horizontal);
       }
 
-      ToolWindowManagerArea *newArea = createArea();
+      ToolWindowManagerArea *newArea = createArea(splitter);
 
       // inherit the size policy from the widget we are wrapping
       splitter->setSizePolicy(area.widget()->sizePolicy());
@@ -647,9 +647,14 @@ void ToolWindowManager::restoreState(const QVariantMap &dataMap)
   }
 }
 
-ToolWindowManagerArea *ToolWindowManager::createArea()
+ToolWindowManagerArea *ToolWindowManager::createArea(QWidget *owner)
 {
-  ToolWindowManagerArea *area = new ToolWindowManagerArea(this, 0);
+  if(nullptr == owner)
+  {
+    owner = this;
+  }
+
+  ToolWindowManagerArea *area = new ToolWindowManagerArea(this, owner);
   connect(area, SIGNAL(tabCloseRequested(int)), this, SLOT(tabCloseRequested(int)));
   return area;
 }
@@ -664,7 +669,7 @@ void ToolWindowManager::releaseToolWindow(QWidget *toolWindow)
   }
   previousTabWidget->removeTab(previousTabWidget->indexOf(toolWindow));
   toolWindow->hide();
-  toolWindow->setParent(0);
+  // toolWindow->setParent(0);
 }
 
 void ToolWindowManager::simplifyLayout()
@@ -860,7 +865,7 @@ QSplitter *ToolWindowManager::restoreSplitterState(const QVariantMap &savedData)
     }
     else if(itemType == QStringLiteral("area"))
     {
-      ToolWindowManagerArea *area = createArea();
+      ToolWindowManagerArea *area = createArea(splitter);
       area->restoreState(itemValue);
       splitter->addWidget(area);
     }
@@ -1340,7 +1345,9 @@ void ToolWindowManager::drawHotspotPixmaps()
         QPointF tip = fullRect.center() + QPointF(4, 0);
 
         path.addPolygon(QPolygonF({
-            tip, tip + QPoint(3, 3), tip + QPoint(3, -3),
+            tip,
+            tip + QPoint(3, 3),
+            tip + QPoint(3, -3),
         }));
       }
       else if(ref == TopOf)
@@ -1348,7 +1355,9 @@ void ToolWindowManager::drawHotspotPixmaps()
         QPointF tip = fullRect.center() + QPointF(0, 4);
 
         path.addPolygon(QPolygonF({
-            tip, tip + QPointF(-3, 3), tip + QPointF(3, 3),
+            tip,
+            tip + QPointF(-3, 3),
+            tip + QPointF(3, 3),
         }));
       }
       else if(ref == RightOf)
@@ -1356,7 +1365,9 @@ void ToolWindowManager::drawHotspotPixmaps()
         QPointF tip = fullRect.center() + QPointF(-4, 0);
 
         path.addPolygon(QPolygonF({
-            tip, tip + QPointF(-3, 3), tip + QPointF(-3, -3),
+            tip,
+            tip + QPointF(-3, 3),
+            tip + QPointF(-3, -3),
         }));
       }
       else if(ref == BottomOf)
@@ -1364,7 +1375,9 @@ void ToolWindowManager::drawHotspotPixmaps()
         QPointF tip = fullRect.center() + QPointF(0, -4);
 
         path.addPolygon(QPolygonF({
-            tip, tip + QPointF(-3, -3), tip + QPointF(3, -3),
+            tip,
+            tip + QPointF(-3, -3),
+            tip + QPointF(3, -3),
         }));
       }
 
