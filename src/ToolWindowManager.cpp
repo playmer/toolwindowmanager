@@ -649,7 +649,7 @@ void ToolWindowManager::restoreState(const QVariantMap &dataMap)
 
 ToolWindowManagerArea *ToolWindowManager::createArea(QWidget *owner)
 {
-  if(nullptr == owner)
+  if(owner == NULL)
   {
     owner = this;
   }
