@@ -25,13 +25,14 @@
 #include "ToolWindowManager.h"
 #include <QApplication>
 #include <QDebug>
-#include <QDesktopWidget>
+//#include <QDesktopWidget>
 #include <QDrag>
 #include <QEvent>
 #include <QMetaMethod>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QScreen>
 #include <QSplitter>
 #include <QTabBar>
@@ -69,7 +70,7 @@ ToolWindowManager::ToolWindowManager(QWidget *parent) : QWidget(parent)
   m_hoverArea = NULL;
 
   QPalette pal = palette();
-  pal.setColor(QPalette::Background, pal.color(QPalette::Highlight));
+  pal.setColor(QPalette::ColorRole::Window, pal.color(QPalette::Highlight));
 
   m_previewOverlay = new QWidget(NULL);
   m_previewOverlay->setAutoFillBackground(true);
@@ -636,7 +637,7 @@ void ToolWindowManager::restoreState(const QVariantMap &dataMap)
     wrapper->show();
     if(wrapper->windowState() & Qt::WindowMaximized)
     {
-      wrapper->setWindowState(0);
+      wrapper->setWindowState(Qt::WindowNoState);
       wrapper->setWindowState(Qt::WindowMaximized);
     }
   }
@@ -1302,7 +1303,6 @@ void ToolWindowManager::drawHotspotPixmaps()
     QPainter p(&m_pixmaps[ref]);
     p.setCompositionMode(QPainter::CompositionMode_Source);
     p.setRenderHint(QPainter::Antialiasing);
-    p.setRenderHint(QPainter::HighQualityAntialiasing);
 
     QRectF rect(0, 0, m_dropHotspotDimension, m_dropHotspotDimension);
 
